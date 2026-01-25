@@ -1,0 +1,66 @@
+.ajax-tools-devtools-action-bar {
+  padding: 2px 12px;
+  background: #f5f7f9;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+body.dark-theme .ajax-tools-devtools-action-bar {
+  background: #141414;
+  border-bottom: 1px solid #303030;
+}
+
+body.dark-theme {
+  background-color: #141414;
+  color: #ffffffd9;
+}
+
+.ant-table-thead > tr > th {
+  padding: 2px 4px !important;
+}
+.ant-table-tbody > tr.ant-table-row > td {
+  padding: 2px 4px !important;
+}
+
+.row-selected > td {
+  background-color: #e6f7ff !important;
+}
+
+body.dark-theme .row-selected > td {
+  background-color: #111b26 !important;
+}
+
+.ant-table-tbody > tr.ant-table-row {
+  cursor: pointer;
+}
+
+/* 自定义滚动条样式 - 让滚动条更低调优雅 */
+/* Webkit 浏览器（Chrome, Safari, Edge）*/
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--vscode-scrollbarSlider-activeBackground, rgba(85, 85, 85, 0.8));
+}
+
+/* Firefox 浏览器 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4)) transparent;
+}

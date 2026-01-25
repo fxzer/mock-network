@@ -1,0 +1,60 @@
+{
+  "name": "MockNetwork",
+  "version": "0.0.10",
+  "description": "拦截和修改网络请求响应数据",
+  "manifest_version": 3,
+  "declarative_net_request": {
+    "rule_resources": []
+  },
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "action": {
+    "default_icon": {
+      "16": "./assets/icons/16.png",
+      "24": "./assets/icons/24.png",
+      "32": "./assets/icons/32.png"
+    }
+  },
+  "icons": {
+    "48": "./assets/icons/128.png",
+    "128": "./assets/icons/128.png"
+  },
+  "background": {
+    "service_worker": "src/background/index.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "./src/content/index.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "devtools_page": "src/devtools/index.html",
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/ui/dist/index.html",
+        "src/ui/dist/rules.html",
+        "src/inject/index.js",
+        "src/inject/mock.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

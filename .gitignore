@@ -1,0 +1,41 @@
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local env
+.env
+.env.local
+.env.*.local
+
+# IDE / Editor
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# Vite / Build
+stats.html
+
+# Extension packaging
+*.crx
+*.pem
+
+# Misc
+.cache
+coverage
+*.tsbuildinfo

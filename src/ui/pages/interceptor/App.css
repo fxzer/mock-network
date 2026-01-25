@@ -1,0 +1,430 @@
+.ajax-tools-iframe-container {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100vh;
+  background: #fff;
+}
+
+.ajax-tools-iframe-action {
+  /* height: 40px */
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ajax-tools-iframe-body {
+  padding: 12px;
+  height: calc(100vh - 40px - 20px);
+  overflow: auto;
+  background: #fff;
+}
+
+.ajax-tools-iframe-body-header {
+  padding: 8px 12px 8px 0px;
+  border: 1px solid #d1d3d8;
+  border-bottom: none;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+  background: #fff1f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ajax-tools-iframe-body-header-input {
+  border: none;
+  outline: none;
+  box-shadow: none !important;
+  padding: 0 8px;
+}
+
+.ajax-tools-iframe-collapse .ant-collapse-header {
+  padding: 8px 16px 4px !important;
+}
+
+.ajax-tools-iframe-request-des-input {
+  height: 18px;
+  line-height: 18px;
+  font-size: 12px;
+  background: #fafafa;
+  color: #999;
+  border: none;
+  outline: none;
+  box-shadow: none !important;
+  padding: 0 8px;
+}
+
+.ajax-tools-iframe-body-footer {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 40px;
+  border: 1px solid #d1d3d8;
+  border-top: none;
+  border-bottom-left-radius: 3px;
+  border-bottom-right-radius: 3px;
+}
+
+.ajax-tools-iframe-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 20px;
+  font-size: 12px;
+  color: #666;
+  background: #f4f6f9;
+}
+
+.ajax-tools-textarea-edit {
+  position: absolute;
+  top: 12px;
+  right: 20px;
+  opacity: 0.5;
+}
+.ajax-tools-textarea-edit:hover {
+  opacity: 1;
+}
+.ajax-tools-textarea-edit-inner {
+  position: absolute;
+  top: 12px;
+  right: 44px;
+  opacity: 0.7;
+  color: #e8b436 !important;
+}
+.ajax-tools-textarea-edit-inner:hover {
+  opacity: 1;
+}
+
+.ajax-tools-color-volcano {
+  color: #d4380d;
+  background: #fff2e8;
+}
+
+.ajax-tools-color-magenta {
+  color: #c41d7f;
+  background: #fff0f6;
+}
+
+.ajax-tools-color-red {
+  color: #cf1322;
+  background: #fff1f0;
+}
+
+.ajax-tools-color-orange {
+  color: #d46b08;
+  background: #fff7e6;
+}
+
+.ajax-tools-color-gold {
+  color: #d48806;
+  background: #fffbe6;
+}
+
+.ajax-tools-color-green {
+  color: #389e0d;
+  background: #f6ffed;
+}
+
+.ajax-tools-color-cyan {
+  color: #08979c;
+  background: #e6fffb;
+}
+
+.ajax-tools-color-blue {
+  color: #096dd9;
+  background: #e6f7ff;
+}
+
+.ajax-tools-color-geekblue {
+  color: #1d39c4;
+  background: #f0f5ff;
+}
+
+.ajax-tools-color-purple {
+  color: #531dab;
+  background: #f9f0ff;
+}
+
+/* Dark Theme Overrides */
+body.dark-theme .ajax-tools-iframe-container {
+  background: #141414;
+}
+
+body.dark-theme .ajax-tools-iframe-action {
+  background: #1f1f1f;
+  border-bottom: 1px solid #303030;
+}
+
+body.dark-theme .ajax-tools-iframe-body {
+  background: #141414;
+}
+
+body.dark-theme .ajax-tools-iframe-body-header {
+  background: #1f1f1f;
+  border-color: #303030;
+}
+
+body.dark-theme .ajax-tools-iframe-body-header-input {
+  background: #1f1f1f;
+  color: #d9d9d9;
+}
+
+body.dark-theme .ajax-tools-iframe-request-des-input {
+  background: #1f1f1f;
+  color: #d9d9d9;
+}
+
+body.dark-theme .ajax-tools-iframe-body-footer {
+  background: #1f1f1f;
+  border-color: #303030;
+}
+
+body.dark-theme .ajax-tools-iframe-footer {
+  background: #1f1f1f;
+  color: #888;
+}
+
+body.dark-theme .ajax-tools-textarea-edit {
+  color: #d9d9d9;
+}
+body.dark-theme .ajax-tools-textarea-edit-inner {
+  color: #e8b436;
+}
+
+/* Dark Theme Color Map */
+body.dark-theme .ajax-tools-color-volcano {
+  color: #ff7a45;
+  background: #2b1d11;
+}
+
+body.dark-theme .ajax-tools-color-magenta {
+  color: #f759ab;
+  background: #291321;
+}
+
+body.dark-theme .ajax-tools-color-red {
+  color: #ff4d4f;
+  background: #2a1215;
+}
+
+body.dark-theme .ajax-tools-color-orange {
+  color: #ffa940;
+  background: #2b1d11;
+}
+
+body.dark-theme .ajax-tools-color-gold {
+  color: #ffc53d;
+  background: #2b2111;
+}
+
+body.dark-theme .ajax-tools-color-green {
+  color: #73d13d;
+  background: #162312;
+}
+
+body.dark-theme .ajax-tools-color-cyan {
+  color: #36cfc9;
+  background: #112123;
+}
+
+body.dark-theme .ajax-tools-color-blue {
+  color: #40a9ff;
+  background: #111d2c;
+}
+
+body.dark-theme .ajax-tools-color-geekblue {
+  color: #597ef7;
+  background: #131629;
+}
+
+body.dark-theme .ajax-tools-color-purple {
+  color: #b37feb;
+  background: #1a1325;
+}
+
+/* Dark Theme Antd Overrides */
+body.dark-theme .ajax-tools-iframe-collapse {
+  background: #1f1f1f;
+  border-color: #303030;
+}
+
+body.dark-theme .ajax-tools-iframe-collapse .ant-collapse-item {
+  border-color: #303030;
+}
+
+body.dark-theme .ajax-tools-iframe-collapse .ant-collapse-content {
+  background: #141414;
+  border-color: #303030;
+}
+
+body.dark-theme .ajax-tools-iframe-collapse .ant-collapse-header {
+  background: #1f1f1f;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+body.dark-theme .ajax-tools-iframe-body-header-input.ajax-tools-color-volcano,
+body.dark-theme .ajax-tools-iframe-body-header-input.ajax-tools-color-magenta,
+body.dark-theme .ajax-tools-iframe-body-header-input.ajax-tools-color-red,
+body.dark-theme .ajax-tools-iframe-body-header-input.ajax-tools-color-orange,
+body.dark-theme .ajax-tools-iframe-body-header-input.ajax-tools-color-gold,
+body.dark-theme .ajax-tools-iframe-body-header-input.ajax-tools-color-green,
+body.dark-theme .ajax-tools-iframe-body-header-input.ajax-tools-color-cyan,
+body.dark-theme .ajax-tools-iframe-body-header-input.ajax-tools-color-blue,
+body.dark-theme .ajax-tools-iframe-body-header-input.ajax-tools-color-geekblue,
+body.dark-theme .ajax-tools-iframe-body-header-input.ajax-tools-color-purple {
+  background: transparent;
+}
+
+/* Antd Input in dark theme */
+body.dark-theme .ant-input,
+body.dark-theme .ant-input-affix-wrapper {
+  background: #1f1f1f;
+  border-color: #434343;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+body.dark-theme .ant-input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+body.dark-theme .ant-input-group-addon {
+  background: #1f1f1f;
+  border-color: #434343;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+body.dark-theme .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  background: #1f1f1f;
+  border-color: #434343;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+body.dark-theme .ant-select-arrow {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+body.dark-theme .ant-select-dropdown {
+  background: #1f1f1f;
+}
+
+body.dark-theme .ant-select-item {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+body.dark-theme .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background: #303030;
+}
+
+body.dark-theme .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background: #177ddc;
+}
+
+/* Antd Dropdown in dark theme */
+body.dark-theme .ant-dropdown-menu {
+  background: #1f1f1f;
+}
+
+body.dark-theme .ant-dropdown-menu-item {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+body.dark-theme .ant-dropdown-menu-item:hover {
+  background: #303030;
+}
+
+body.dark-theme .ant-dropdown-menu-item-danger {
+  color: #ff4d4f;
+}
+
+/* Footer link in dark theme */
+body.dark-theme .ajax-tools-iframe-footer a {
+  color: #888 !important;
+}
+
+body.dark-theme .ajax-tools-iframe-footer .anticon {
+  color: #d9d9d9 !important;
+}
+
+/* Antd Checkbox in dark theme */
+body.dark-theme .ant-checkbox-wrapper {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+body.dark-theme .ant-checkbox-inner {
+  background: #1f1f1f;
+  border-color: #434343;
+}
+
+body.dark-theme .ant-checkbox-checked .ant-checkbox-inner {
+  background: #177ddc;
+  border-color: #177ddc;
+}
+
+/* Antd Button in dark theme */
+body.dark-theme .ant-btn-text {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+body.dark-theme .ant-btn-text:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Antd Result in dark theme */
+body.dark-theme .ant-result-title {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+body.dark-theme .ant-result-subtitle {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* Antd Switch in dark theme */
+body.dark-theme .ant-switch {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+body.dark-theme .ant-switch-checked {
+  background: #177ddc;
+}
+
+/* Panel header 中 Select 的字体大小 */
+.ajax-tools-iframe-collapse .ant-collapse-header .ant-select-selector {
+  font-size: 12px !important;
+}
+.ajax-tools-iframe-collapse .ant-collapse-header .ant-select-selection-item {
+  font-size: 12px !important;
+}
+
+/* 自定义滚动条样式 - 让滚动条更低调优雅 */
+/* Webkit 浏览器（Chrome, Safari, Edge）*/
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--vscode-scrollbarSlider-activeBackground, rgba(85, 85, 85, 0.8));
+}
+
+/* Firefox 浏览器 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4)) transparent;
+}

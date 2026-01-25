@@ -1,0 +1,24 @@
+.ajax-tools-monaco-editor-container {
+  position: relative;
+}
+
+.ajax-tools-monaco-editor-header {
+  padding: 0 4px;
+  height: 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff;
+  color: #000;
+  border-bottom: 1px solid #d1d3d8;
+}
+
+.dark-theme .ajax-tools-monaco-editor-header {
+  background: #1f1f1f;
+  border-bottom: 1px solid #424242;
+  color: #d9d9d9;
+}
+
+.ajax-tools-monaco-language-select {
+  width: 110px;
+}

@@ -425,46 +425,87 @@ function actionBar(container) {
 }
 // 只在最顶层页面嵌入iframe
 if (window.self === window.top) {
-  document.onreadystatechange = () => {
-    if (document.readyState === 'complete') {
-      let container = document.createElement('div');
-      container.className = 'ajax-interceptor-container';
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  let container = null;
+  const init = () => {
+    if (container || !document.body) return;
+    container = document.createElement('div');
+    container.className = 'ajax-interceptor-container';
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (isDark) {
+      container.classList.add('dark-theme');
+    }
+    container.style.setProperty(
+      'transform',
+      'translateX(calc(100% + 20px))',
+      'important',
+    ); // 470px
+    const _actionBar = actionBar(container);
+    container.appendChild(_actionBar);
+    const iframe = document.createElement('iframe');
+    iframe.src = chrome.runtime.getURL(
+      `src/ui/dist/index.html?theme=${isDark ? 'dark' : 'light'}`,
+    );
+    iframe.className = 'ajax-interceptor-iframe';
+    container.appendChild(iframe);
+    if (document.body) document.body.appendChild(container);
+  };
+
+  // 监听系统主题变化
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  const handleThemeChange = e => {
+    if (container) {
+      const isDark = e.matches;
+      if (isDark) {
         container.classList.add('dark-theme');
+      } else {
+        container.classList.remove('dark-theme');
       }
-      container.style.setProperty(
-        'transform',
-        'translateX(calc(100% + 20px))',
-        'important',
-      ); // 470px
-      const _actionBar = actionBar(container);
-      container.appendChild(_actionBar);
-      const iframe = document.createElement('iframe');
-      iframe.src = chrome.runtime.getURL('src/ui/dist/index.html');
-      iframe.className = 'ajax-interceptor-iframe';
-      container.appendChild(iframe);
-      if (document.body) document.body.appendChild(container);
-      if (chrome.runtime?.id) {
-        chrome.runtime.onMessage.addListener(
-          (request, sender, sendResponse) => {
-            // console.log('【content】【ajax-tools-iframe-show】receive message', request);
-            const { type, iframeVisible } = request;
-            if (type === 'iframeToggle') {
-              container.style.setProperty(
-                'transform',
-                iframeVisible
-                  ? 'translateX(0)'
-                  : 'translateX(calc(100% + 20px))',
-                'important',
-              );
-              sendResponse({ nextIframeVisible: !iframeVisible }); // 返回信息到popup.js / App.jsx
-            }
-            return true;
-          },
+      const iframe = container.querySelector('iframe');
+      if (iframe) {
+        iframe.contentWindow.postMessage(
+          { type: 'themeChange', theme: isDark ? 'dark' : 'light' },
+          '*',
         );
       }
     }
   };
+  // 兼容旧版浏览器
+  try {
+    mediaQuery.addEventListener('change', handleThemeChange);
+  } catch (e) {
+    mediaQuery.addListener(handleThemeChange);
+  }
+
+  if (
+    document.readyState === 'complete' ||
+    document.readyState === 'interactive'
+  ) {
+    init();
+  } else {
+    document.addEventListener('DOMContentLoaded', init);
+    window.addEventListener('load', init);
+  }
+
+  if (chrome.runtime?.id) {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      // console.log('【content】【ajax-tools-iframe-show】receive message', request);
+      const { type, iframeVisible } = request;
+      if (type === 'iframeToggle') {
+        if (!container) init();
+        if (container) {
+          container.style.setProperty(
+            'transform',
+            iframeVisible ? 'translateX(0)' : 'translateX(calc(100% + 20px))',
+            'important',
+          );
+          sendResponse({ nextIframeVisible: !iframeVisible }); // 返回信息到popup.js / App.jsx
+        } else {
+          sendResponse({ nextIframeVisible: iframeVisible });
+        }
+      }
+      return true;
+    });
+  }
 }
 
 chrome.storage.onChanged.addListener(function (changes, namespace) {

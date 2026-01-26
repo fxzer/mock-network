@@ -215,6 +215,10 @@ export default (props: RequestDrawerProps) => {
       apiReply: '',
     }
 
+    if (!responseText || responseText === 'undefined') {
+      return result
+    }
+
     // 非 API 接口，直接解析返回
     if (!url?.endsWith('/api') && !url?.includes('/api/result')) {
       try {

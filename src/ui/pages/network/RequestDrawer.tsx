@@ -293,7 +293,28 @@ export default (props: RequestDrawerProps) => {
         </div>
         <div className="ajax-tools-devtools-text" style={{ display: 'flex' }}>
           <strong style={{ flex: 'none' }}>text:&nbsp;</strong>
-          <pre>{formatText(postData.text)}</pre>
+          {(() => {
+            try {
+              const json = JSON.parse(postData.text)
+              if (typeof json === 'object' && json !== null) {
+                return (
+                  <JsonView
+                    style={theme === 'dark' ? vscodeTheme : lightTheme}
+                    value={json}
+                    collapsed={false}
+                    displayDataTypes={false}
+                    enableClipboard={true}
+                    onCopied={() => message.success('已复制到剪贴板')}
+                    shortenTextAfterLength={120}
+                  />
+                )
+              }
+            }
+            catch (e) {
+              // ignore
+            }
+            return <pre>{formatText(postData.text)}</pre>
+          })()}
         </div>
         {postData.params && (
           <div className="ajax-tools-devtools-text">

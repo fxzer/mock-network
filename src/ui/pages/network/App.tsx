@@ -82,16 +82,72 @@ function checkIntercepted(record: any, rules: any[]) {
   });
 }
 
+const ResizableTitle = (props: any) => {
+  const { onResize, width, ...restProps } = props;
+
+  if (!width) {
+    return <th {...restProps} />;
+  }
+
+  return (
+    <th
+      {...restProps}
+      className="react-resizable" // Add this class for relative positioning
+      style={{ ...restProps.style, width }} // Ensure width is applied
+    >
+      {restProps.children}
+      <div
+        className="react-resizable-handle"
+        onMouseDown={e => {
+          e.preventDefault();
+          e.stopPropagation();
+          const startX = e.clientX;
+          const startWidth = width;
+
+          const onMouseMove = (moveEvent: MouseEvent) => {
+            const newWidth = Math.max(
+              50,
+              startWidth + (moveEvent.clientX - startX),
+            );
+            onResize(newWidth);
+          };
+
+          const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+          };
+
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+        }}
+        onClick={e => e.stopPropagation()}
+      />
+    </th>
+  );
+};
+
 function getColumns({
   onAddInterceptorClick,
   onRequestUrlClick,
   interceptorRules,
+  columnWidths,
+  ajaxToolsSwitchOn,
+  handleResize,
 }: {
   onAddInterceptorClick: (record: any) => void;
   onRequestUrlClick: (record: any) => void;
   interceptorRules: any[];
+  columnWidths: { Path: number; apiMsg: number };
+  ajaxToolsSwitchOn: boolean;
+  handleResize: (
+    columnKey: string,
+  ) => (e: React.SyntheticEvent, { size }: { size: { width: number } }) => void;
 }) {
-  return [
+  const columns = [
     {
       title: '序号',
       dataIndex: 'Index',
@@ -106,16 +162,21 @@ function getColumns({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              position: 'relative',
+              width: '100%',
             }}
           >
-            {isIntercepted && (
+            {isIntercepted && ajaxToolsSwitchOn && (
               <div
                 style={{
+                  position: 'absolute',
+                  left: 4,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
                   width: 6,
                   height: 6,
                   borderRadius: '50%',
                   background: '#a855f7', // purple
-                  marginRight: 4,
                   flexShrink: 0,
                 }}
                 title="已拦截"
@@ -130,7 +191,7 @@ function getColumns({
       title: '路径',
       dataIndex: 'Path',
       key: 'Path',
-      width: 120,
+      width: columnWidths.Path,
       ellipsis: true,
       render: (_: any, record: any) => {
         // 添加安全检查
@@ -154,7 +215,7 @@ function getColumns({
       title: 'ApiMsg',
       dataIndex: 'apiMsg',
       key: 'apiMsg',
-      width: 250,
+      width: columnWidths.apiMsg,
       ellipsis: true,
       render: (_: any, record: any) => {
         return <FormatApiMsg msgType={record._displayApiMsg} hidePrefix />;
@@ -200,6 +261,21 @@ function getColumns({
       ),
     },
   ];
+
+  return columns.map((col: any) => {
+    if (col.key === 'Path' || col.key === 'apiMsg') {
+      return {
+        ...col,
+        onHeaderCell: (column: any) => ({
+          width: column.width,
+          onResize: (width: number) => {
+            handleResize(col.key as string)(null as any, { size: { width } });
+          },
+        }),
+      };
+    }
+    return col;
+  });
 }
 
 // "/^t.*$/" or "^t.*$" => new RegExp
@@ -238,6 +314,34 @@ export default function App() {
   const [currRecord, setCurrRecord] = useState(null);
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [interceptorRules, setInterceptorRules] = useState<any[]>([]);
+  const [ajaxToolsSwitchOn, setAjaxToolsSwitchOn] = useState(true);
+
+  // Column resizing state
+  const [columnWidths, setColumnWidths] = useState({
+    Path: 120,
+    apiMsg: 250,
+  });
+
+  useEffect(() => {
+    const savedWidths = localStorage.getItem('uNetworkTableColumnWidths');
+    if (savedWidths) {
+      try {
+        setColumnWidths(JSON.parse(savedWidths));
+      } catch (e) {
+        console.error('Failed to parse column widths', e);
+      }
+    }
+  }, []);
+
+  const handleResize =
+    (key: string) =>
+    (_: React.SyntheticEvent, { size }: { size: { width: number } }) => {
+      setColumnWidths((prev: any) => {
+        const next = { ...prev, [key]: size.width };
+        localStorage.setItem('uNetworkTableColumnWidths', JSON.stringify(next));
+        return next;
+      });
+    };
 
   // 用 ref 来保持最新的 uNetwork 引用，供 syncNetworkData 使用
   const uNetworkRef = useRef<any[]>([]);
@@ -286,23 +390,31 @@ export default function App() {
       }
     }
 
-    // Load initial interceptor rules
-    getChromeLocalStorage('ajaxDataList').then((result: any) => {
-      const list = result.ajaxDataList || [];
-      const rules = list.flatMap(
-        (item: { interfaceList: any[] }) => item.interfaceList || [],
-      );
-      setInterceptorRules(rules);
-    });
-
-    // Listen for storage changes to update interceptor rules
-    const handleStorageChange = (changes: any, areaName: string) => {
-      if (areaName === 'local' && changes.ajaxDataList) {
-        const list = changes.ajaxDataList.newValue || [];
+    // Load initial interceptor rules and global switch status
+    getChromeLocalStorage(['ajaxDataList', 'ajaxToolsSwitchOn']).then(
+      (result: any) => {
+        const list = result.ajaxDataList || [];
         const rules = list.flatMap(
           (item: { interfaceList: any[] }) => item.interfaceList || [],
         );
         setInterceptorRules(rules);
+        setAjaxToolsSwitchOn(result.ajaxToolsSwitchOn !== false);
+      },
+    );
+
+    // Listen for storage changes to update interceptor rules
+    const handleStorageChange = (changes: any, areaName: string) => {
+      if (areaName === 'local') {
+        if (changes.ajaxDataList) {
+          const list = changes.ajaxDataList.newValue || [];
+          const rules = list.flatMap(
+            (item: { interfaceList: any[] }) => item.interfaceList || [],
+          );
+          setInterceptorRules(rules);
+        }
+        if (changes.ajaxToolsSwitchOn) {
+          setAjaxToolsSwitchOn(changes.ajaxToolsSwitchOn.newValue);
+        }
       }
     };
     chrome.storage.onChanged.addListener(handleStorageChange);
@@ -616,6 +728,9 @@ export default function App() {
     onAddInterceptorClick,
     onRequestUrlClick,
     interceptorRules,
+    columnWidths,
+    ajaxToolsSwitchOn,
+    handleResize,
   });
 
   const filteredData = uNetwork.filter((v: { request: { url: string } }) =>
@@ -667,6 +782,11 @@ export default function App() {
         <Table
           size="small"
           bordered
+          components={{
+            header: {
+              cell: ResizableTitle,
+            },
+          }}
           columns={columns}
           dataSource={filteredData}
           pagination={false}

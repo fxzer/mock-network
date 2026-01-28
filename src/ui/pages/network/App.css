@@ -46,23 +46,36 @@ body.dark-theme .ant-table-row.row-selected .ant-table-cell {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+  background: var(
+    --vscode-scrollbarSlider-background,
+    rgba(121, 121, 121, 0.4)
+  );
   border-radius: 4px;
   transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
+  background: var(
+    --vscode-scrollbarSlider-hoverBackground,
+    rgba(100, 100, 100, 0.7)
+  );
 }
 
 ::-webkit-scrollbar-thumb:active {
-  background: var(--vscode-scrollbarSlider-activeBackground, rgba(85, 85, 85, 0.8));
+  background: var(
+    --vscode-scrollbarSlider-activeBackground,
+    rgba(85, 85, 85, 0.8)
+  );
 }
 
 /* Firefox 浏览器 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4)) transparent;
+  scrollbar-color: var(
+      --vscode-scrollbarSlider-background,
+      rgba(121, 121, 121, 0.4)
+    )
+    transparent;
 }
 
 .custom-table-row > td {
@@ -71,4 +84,28 @@ body.dark-theme .ant-table-row.row-selected .ant-table-cell {
 
 .ant-table-wrapper .ant-table.ant-table-small .ant-table-cell {
   padding: 2px 4px !important;
+}
+
+.react-resizable {
+  position: relative;
+  background-clip: padding-box;
+}
+
+.react-resizable-handle {
+  position: absolute;
+  right: -5px;
+  bottom: 0;
+  z-index: 10;
+  width: 10px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.react-resizable-handle:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+body.dark-theme .react-resizable-handle:hover {
+  background-color: rgba(255, 255, 255, 0.2);
 }

@@ -63,6 +63,7 @@ interface MonacoEditorProps {
   headerStyle?: object;
   onDidChangeContent?: (arg0: string) => void;
   onSaveKeyword?: (arg0: any) => void;
+  readOnly?: boolean; // 只读模式
 }
 type ExamplesType = NonNullable<MonacoEditorProps['examples']>[number];
 function MonacoEditor(
@@ -84,6 +85,7 @@ function MonacoEditor(
     headerRightRightNode,
     onDidChangeContent,
     onSaveKeyword,
+    readOnly = false, // 默认可编辑
   } = props;
   const [editor, setEditor] = useState<any>(null);
   const [language, setLanguage] = useState<string>(props.language || 'json');
@@ -95,6 +97,10 @@ function MonacoEditor(
         theme,
         scrollBeyondLastLine: false,
         tabSize: 2,
+        readOnly, // 只读模式
+        minimap: {
+          enabled: false, // 禁用 minimap
+        },
       });
       // 添加保存快捷键
       editor.addAction({
@@ -145,6 +151,22 @@ function MonacoEditor(
     }
   }, [editor, theme]);
 
+  // 监听容器宽度变化，自动调整编辑器布局（修复 Drawer 拖拽时编辑器不响应的问题）
+  useEffect(() => {
+    if (!editor || !editorRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      // 调用 layout 方法让编辑器重新计算布局
+      editor.layout();
+    });
+
+    resizeObserver.observe(editorRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [editor]);
+
   // 格式化代码
   const formatDocumentAction = () => {
     if (editor) editor.getAction('editor.action.formatDocument').run();
@@ -171,46 +193,51 @@ function MonacoEditor(
   });
   return (
     <div className="ajax-tools-monaco-editor-container">
-      <header className="ajax-tools-monaco-editor-header" style={headerStyle}>
-        <div>
-          {headerLeftNode}
-          {languageSelectOptions.length > 0 ? (
-            <Select
-              size="small"
-              value={language}
-              onChange={onLanguageChange}
-              className="ajax-tools-monaco-language-select"
-            >
-              {languageSelectOptions.map(lang => (
-                <Select.Option key={lang} value={lang}>
-                  {lang}
-                </Select.Option>
-              ))}
-            </Select>
-          ) : null}
-        </div>
-        <div>
-          <Space size={16}>
-            {headerRightNode}
-            {examples.length > 1 ? (
-              <Dropdown menu={{ items }}>
-                <a onClick={e => e.preventDefault()}>
-                  <Space size={4}>
-                    示例
-                    <DownOutlined />
-                  </Space>
+      {!readOnly && (
+        <header className="ajax-tools-monaco-editor-header" style={headerStyle}>
+          <div>
+            {headerLeftNode}
+            {languageSelectOptions.length > 0 ? (
+              <Select
+                size="small"
+                value={language}
+                onChange={onLanguageChange}
+                className="ajax-tools-monaco-language-select"
+              >
+                {languageSelectOptions.map(lang => (
+                  <Select.Option key={lang} value={lang}>
+                    {lang}
+                  </Select.Option>
+                ))}
+              </Select>
+            ) : null}
+          </div>
+          <div>
+            <Space size={16}>
+              {headerRightNode}
+              {examples.length > 1 ? (
+                <Dropdown menu={{ items }}>
+                  <a onClick={e => e.preventDefault()}>
+                    <Space size={4}>
+                      示例
+                      <DownOutlined />
+                    </Space>
+                  </a>
+                </Dropdown>
+              ) : (
+                <a title="示例" onClick={() => onAddExampleClick(examples[0])}>
+                  示例
                 </a>
-              </Dropdown>
-            ) : (
-              <a title="示例" onClick={() => onAddExampleClick(examples[0])}>
-                示例
-              </a>
-            )}
-            <AlignLeftOutlined title="格式化" onClick={formatDocumentAction} />
-            {headerRightRightNode}
-          </Space>
-        </div>
-      </header>
+              )}
+              <AlignLeftOutlined
+                title="格式化"
+                onClick={formatDocumentAction}
+              />
+              {headerRightRightNode}
+            </Space>
+          </div>
+        </header>
+      )}
       <div
         ref={editorRef}
         style={{

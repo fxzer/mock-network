@@ -3,12 +3,10 @@ import {
   CopyOutlined,
   FilterOutlined,
 } from '@ant-design/icons';
-import JsonView from '@uiw/react-json-view';
-import { lightTheme } from '@uiw/react-json-view/light';
-import { vscodeTheme } from '@uiw/react-json-view/vscode';
-import { Divider, Drawer, message, Tabs } from 'antd';
+import { Divider, Drawer, Tabs } from 'antd';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
+import MonacoEditor from '../../components/MonacoEditor';
 import { FormatApiMsg } from '../../utils';
 import './RequestDrawer.css';
 
@@ -283,21 +281,22 @@ export default (props: RequestDrawerProps) => {
           <strong>mimeType:&nbsp;</strong>
           <span>{postData.mimeType}</span>
         </div>
-        <div className="ajax-tools-devtools-text" style={{ display: 'flex' }}>
-          <strong style={{ flex: 'none' }}>text:&nbsp;</strong>
+        <div className="ajax-tools-devtools-text">
+          <strong>text:&nbsp;</strong>
+        </div>
+        <div style={{ marginTop: 8 }}>
           {(() => {
             try {
               const json = JSON.parse(postData.text);
               if (typeof json === 'object' && json !== null) {
                 return (
-                  <JsonView
-                    style={theme === 'dark' ? vscodeTheme : lightTheme}
-                    value={json}
-                    collapsed={false}
-                    displayDataTypes={false}
-                    enableClipboard={true}
-                    onCopied={() => message.success('已复制到剪贴板')}
-                    shortenTextAfterLength={120}
+                  <MonacoEditor
+                    language="json"
+                    text={JSON.stringify(json, null, 2)}
+                    theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
+                    editorHeight="calc(100vh - 240px)"
+                    readOnly={true}
+                    languageSelectOptions={[]}
                   />
                 );
               }
@@ -347,14 +346,13 @@ export default (props: RequestDrawerProps) => {
 
     if (jsonContent && typeof jsonContent === 'object') {
       return (
-        <JsonView
-          style={theme === 'dark' ? vscodeTheme : lightTheme}
-          value={jsonContent}
-          collapsed={3}
-          displayDataTypes={false}
-          enableClipboard={true}
-          onCopied={() => message.success('已复制到剪贴板')}
-          shortenTextAfterLength={120}
+        <MonacoEditor
+          language="json"
+          text={JSON.stringify(jsonContent, null, 2)}
+          theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
+          readOnly={true}
+          editorHeight="calc(100vh - 180px)"
+          languageSelectOptions={[]}
         />
       );
     }
@@ -388,14 +386,13 @@ export default (props: RequestDrawerProps) => {
         )}
         {displayData && typeof displayData === 'object' ? (
           <>
-            <JsonView
-              style={theme === 'dark' ? vscodeTheme : lightTheme}
-              value={displayData}
-              collapsed={2}
-              displayDataTypes={false}
-              enableClipboard={true}
-              onCopied={() => message.success('已复制到剪贴板')}
-              shortenTextAfterLength={120}
+            <MonacoEditor
+              language="json"
+              text={JSON.stringify(displayData, null, 2)}
+              theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
+              readOnly={true}
+              editorHeight="calc(100vh - 160px)"
+              languageSelectOptions={[]}
             />
           </>
         ) : (

@@ -89,6 +89,15 @@ export function FormatApiMsg({
           fontWeight: 600,
           marginLeft: '2px',
           marginRight: '2px',
+          cursor: 'pointer',
+        }}
+        title={`点击复制: ${operation}`}
+        onClick={(e) => {
+          e.stopPropagation()
+          navigator.clipboard.writeText(operation).then(() => {
+            // 可以在这里添加一个提示，比如显示一个 tooltip
+            console.log('已复制:', operation)
+          })
         }}
       >
         {operation}
@@ -124,7 +133,11 @@ export function extractApiOperation(apiMsg: string): string {
  * 检查是否为公司的 API 请求
  * 条件：path 包含 /api 且（payload 第一个键包含 com.syscxp 或 response.result 包含 com.syscxp）
  */
-export function isSysxcpApi(url: string, postDataText?: string, responseText?: string): boolean {
+export function isSysxcpApi(
+  url: string,
+  postDataText?: string,
+  responseText?: string,
+): boolean {
   // 条件1：path 包含 /api
   if (!url?.includes('/api'))
     return false

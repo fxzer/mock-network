@@ -39,6 +39,11 @@ chrome.devtools.panels.create(
           requestBuffer.length = 0;
         },
       };
+
+      // 如果UI已经加载完成，手动触发初始化
+      if (window.initializeFromBridge) {
+        window.initializeFromBridge();
+      }
     });
 
     panel.onHidden.addListener(function () {

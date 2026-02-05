@@ -250,6 +250,7 @@ function getColumns({
       dataIndex: 'action',
       key: 'action',
       width: 60,
+      fixed: 'right' as const,
       align: 'center' as const,
       render: (_: any, record: any) => (
         <FilterOutlined
@@ -371,8 +372,25 @@ export default function App() {
   }
 
   useEffect(() => {
+    // 定义初始化方法
+    const initializeFromBridge = () => {
+      const bridge = (window as any).bridge
+      if (bridge) {
+        setRecording(bridge.getRecordingState())
+        const buffer = bridge.getBuffer()
+        if (buffer && buffer.length > 0) {
+          const processed = buffer.map(processRequest).filter(Boolean)
+          setUNetwork(processed)
+          uNetworkRef.current = processed
+        }
+      }
+    }
+
+    // 暴露给 devtools 页面调用
+    ;(window as any).initializeFromBridge = initializeFromBridge
+
     // 定义同步方法供 devtoolsPage 调用
-    (window as any).syncNetworkData = (requests: any[]) => {
+    ;(window as any).syncNetworkData = (requests: any[]) => {
       const newRequests = requests.map(processRequest).filter(Boolean)
 
       if (newRequests.length > 0) {
@@ -384,17 +402,8 @@ export default function App() {
       }
     }
 
-    // 初始化：从 bridge 获取状态和历史数据
-    const bridge = (window as any).bridge
-    if (bridge) {
-      setRecording(bridge.getRecordingState())
-      const buffer = bridge.getBuffer()
-      if (buffer && buffer.length > 0) {
-        const processed = buffer.map(processRequest).filter(Boolean)
-        setUNetwork(processed)
-        uNetworkRef.current = processed
-      }
-    }
+    // 尝试初始化
+    initializeFromBridge()
 
     // Load initial interceptor rules and global switch status
     getChromeLocalStorage(['ajaxDataList', 'ajaxToolsSwitchOn']).then(
@@ -427,6 +436,7 @@ export default function App() {
 
     return () => {
       delete (window as any).syncNetworkData
+      delete (window as any).initializeFromBridge
       chrome.storage.onChanged.removeListener(handleStorageChange)
     }
   }, [])

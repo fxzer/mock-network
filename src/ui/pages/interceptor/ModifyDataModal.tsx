@@ -189,6 +189,7 @@ function ModifyDataModal(
                   <MonacoEditor
                     ref={monacoEditorResponseRef}
                     language={responseLanguage}
+                    languageSelectOptions={['json', 'javascript']}
                     text={responseText}
                     examples={RESPONSE_EXAMPLES}
                     editorHeight="calc(100vh - 300px - 40px)"

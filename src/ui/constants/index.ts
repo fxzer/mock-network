@@ -1,6 +1,6 @@
 export interface AjaxDataListObject {
   summaryText: string
-  collapseActiveKeys: string []
+  collapseActiveKeys: string[]
   headerClass: string
   interfaceList: DefaultInterfaceObject[]
 }
@@ -177,6 +177,55 @@ return {
   "status": 200,
   "response": originalResponse
 }
+`,
+  },
+]
+
+export const INNER_DATA_RESPONSE_EXAMPLES = [
+  {
+    egType: 'json',
+    egTitle: '示例：JSON',
+    egText: `{
+  "inventories": [
+    {
+      "uuid": "019aff18c84349e5849a0ea7ebe0c5ae",
+      "name": "test-name1",
+      "createDate": "May 28, 2024 5:50:01 PM",
+      "lastOpDate": "May 28, 2024 5:50:01 PM"
+    },
+    {
+      "uuid": "019aff18c84349e5849a0ea7ebe0c5ad",
+      "name": "test-name2",
+      "createDate": "Sep 21, 2022 1:41:41 AM",
+      "lastOpDate": "Sep 21, 2022 1:41:41 AM"
+    },
+    {
+      "uuid": "019aff18c84349e5849a0ea7ebe0c5af",
+      "name": "test-name3",
+      "createDate": "Aug 26, 2022 2:57:14 AM",
+      "lastOpDate": "Aug 26, 2022 2:57:14 AM"
+    }
+  ],
+  "total": 3,
+  "success": true
+}
+`,
+  },
+  {
+    egType: 'javascript',
+    egTitle: '示例：Mock.js',
+    egText: `const data = Mock.mock({
+  'inventories|3': [{
+    'uuid': '@guid',
+    'name': /test-name\\d/,
+    'createDate': '@datetime("MMM dd, yyyy h:mm:ss A")',
+    'lastOpDate': '@datetime("MMM dd, yyyy h:mm:ss A")'
+  }],
+  'total': 3,
+  'success': true
+});
+
+return data
 `,
   },
 ]

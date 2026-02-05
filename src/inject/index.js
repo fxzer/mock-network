@@ -20,8 +20,11 @@ const ajax_tools_space = {
   },
   getOverrideText: (responseText, args, toJson = false) => {
     let overrideText = responseText;
+    let jsonObj;
+    let isJson = false;
     try {
-      JSON.parse(responseText);
+      jsonObj = JSON.parse(responseText);
+      isJson = true;
     } catch (e) {
       try {
         // const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
@@ -37,6 +40,12 @@ const ajax_tools_space = {
         console.error('【Executing your function reports an error】\n', e);
       }
     }
+    if (isJson) {
+      try {
+        jsonObj = ajax_tools_space.processSysxcpInnerData(jsonObj, args);
+        overrideText = JSON.stringify(jsonObj);
+      } catch (e) {}
+    }
     if (toJson) {
       try {
         overrideText = JSON.parse(overrideText);
@@ -51,6 +60,40 @@ const ajax_tools_space = {
       stringFunction = new Function(stringFunction)(args);
     } catch (e) {}
     return stringFunction;
+  },
+  processSysxcpInnerData: (jsonObj, args) => {
+    try {
+      if (jsonObj && jsonObj.result && typeof jsonObj.result === 'string') {
+        let innerResult;
+        try {
+          innerResult = JSON.parse(jsonObj.result);
+        } catch (e) {
+          return jsonObj;
+        }
+        if (innerResult && typeof innerResult === 'object') {
+          let hasChanges = false;
+          for (const key in innerResult) {
+            const val = innerResult[key];
+            if (typeof val === 'string') {
+              const executionResult = ajax_tools_space.executeStringFunction(
+                val,
+                args,
+              );
+              if (val !== executionResult) {
+                innerResult[key] = executionResult;
+                hasChanges = true;
+              }
+            }
+          }
+          if (hasChanges) {
+            jsonObj.result = JSON.stringify(innerResult);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error processing inner data:', e);
+    }
+    return jsonObj;
   },
   getRequestParams: requestUrl => {
     if (!requestUrl) {

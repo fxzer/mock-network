@@ -26,7 +26,10 @@ import * as React from 'react'
 import { useRef, useState } from 'react'
 import FormatApiMsg from '../../components/FormatApiMsg'
 import MonacoEditor from '../../components/MonacoEditor'
-import { HTTP_METHOD_MAP } from '../../constants'
+import {
+  HTTP_METHOD_MAP,
+  INNER_DATA_RESPONSE_EXAMPLES,
+} from '../../constants'
 
 const { Panel } = Collapse
 const { TextArea } = Input
@@ -174,7 +177,16 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
       const { editorInstance } = monacoEditorInnerRef.current
       const editorValue
         = editorInstance?.getValue() || innerEditModal.innerValue
-      const parsedValue = JSON.parse(editorValue)
+      const language = editorInstance?.getModel()?.getLanguageId()
+
+      let parsedValue
+      if (language === 'javascript') {
+        parsedValue = editorValue
+      }
+      else {
+        parsedValue = JSON.parse(editorValue)
+      }
+
       const newResponseText = assembleSysxcpApiResponse(
         innerEditModal.outer,
         innerEditModal.apiKey,
@@ -589,23 +601,8 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
           text={innerEditModal.innerValue}
           theme={theme}
           editorHeight="calc(100vh - 260px)"
-          languageSelectOptions={[]}
-          examples={[
-            {
-              egTitle: '示例',
-              egType: 'json',
-              egText: `{
-  "inventories": [
-    {
-      "uuid": "363cd3476747450487de77df09c5cf01",
-      "name": "name example"
-    }
-  ],
-  "total": 12,
-  "success": true
-}`,
-            },
-          ]}
+          languageSelectOptions={['json', 'javascript']}
+          examples={INNER_DATA_RESPONSE_EXAMPLES}
         />
       </Modal>
     </>

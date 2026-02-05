@@ -1,8 +1,8 @@
 import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
-
 /* global require, __dirname */
 import { defineConfig } from 'vite';
+
 const path = require('path');
 
 // https://vitejs.dev/config/

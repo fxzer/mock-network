@@ -21,11 +21,11 @@ import {
 import * as React from 'react'
 
 import { useEffect, useRef, useState } from 'react'
+import FormatApiMsg from '../../components/FormatApiMsg'
 import { defaultInterface } from '../../constants'
 import useTheme from '../../hooks/useTheme'
 import {
   extractApiOperation,
-  FormatApiMsg,
   isSysxcpApi,
   parseRequestDisplayData,
 } from '../../utils'

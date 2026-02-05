@@ -24,6 +24,7 @@ import {
 } from 'antd'
 import * as React from 'react'
 import { useRef, useState } from 'react'
+import FormatApiMsg from '../../components/FormatApiMsg'
 import MonacoEditor from '../../components/MonacoEditor'
 import { HTTP_METHOD_MAP } from '../../constants'
 
@@ -568,7 +569,7 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
         title={(
           <span style={{ fontSize: 12 }}>
             编辑内层数据：
-            {innerEditModal.apiKey}
+            <FormatApiMsg msgType={innerEditModal.apiKey} hidePrefix />
           </span>
         )}
         open={innerEditModal.visible}

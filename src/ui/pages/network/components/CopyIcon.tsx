@@ -1,52 +1,57 @@
-import * as React from 'react';
-import { useEffect, useState } from 'react';
-import { CheckCircleFilled, CopyOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, CopyOutlined } from '@ant-design/icons'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 
 export default function CopyIcon({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    let timer: any;
+    let timer: any
     if (copied) {
       timer = setTimeout(() => {
-        setCopied(false);
-      }, 3000);
+        setCopied(false)
+      }, 3000)
     }
     return () => {
       if (timer) {
-        clearTimeout(timer);
+        clearTimeout(timer)
       }
-    };
-  }, [copied]);
+    }
+  }, [copied])
 
   const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!text) return;
+    e.stopPropagation()
+    if (!text)
+      return
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
-        setCopied(true);
-      });
-    } else {
+        setCopied(true)
+      })
+    }
+    else {
       // Fallback for context where clipboard API might be restricted
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.position = 'fixed';
-      textarea.style.left = '-9999px';
-      textarea.style.top = '0';
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      textarea.style.top = '0'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
       try {
-        const successful = document.execCommand('copy');
-        if (successful) setCopied(true);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        document.body.removeChild(textarea);
+        const successful = document.execCommand('copy')
+        if (successful)
+          setCopied(true)
+      }
+      catch (e) {
+        console.error(e)
+      }
+      finally {
+        document.body.removeChild(textarea)
       }
     }
-  };
+  }
 
   if (copied) {
     return (
@@ -54,7 +59,7 @@ export default function CopyIcon({ text }: { text: string }) {
         style={{ marginLeft: 8, color: '#52c41a' }}
         title="已复制"
       />
-    );
+    )
   }
 
   return (
@@ -63,5 +68,5 @@ export default function CopyIcon({ text }: { text: string }) {
       title="复制 API Msg"
       onClick={handleCopy}
     />
-  );
+  )
 }

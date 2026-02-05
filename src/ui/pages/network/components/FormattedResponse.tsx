@@ -1,16 +1,16 @@
-import * as React from 'react';
-import MonacoEditor from '../../../components/MonacoEditor';
-import { FormatApiMsg } from '../../../utils';
-import CopyIcon from './CopyIcon';
+import * as React from 'react'
+import FormatApiMsg from '../../../components/FormatApiMsg'
+import MonacoEditor from '../../../components/MonacoEditor'
+import CopyIcon from './CopyIcon'
 
 export default function FormattedResponse({
   apiReply,
   displayData,
   theme,
 }: {
-  apiReply: string;
-  displayData: any;
-  theme?: 'light' | 'dark';
+  apiReply: string
+  displayData: any
+  theme?: 'light' | 'dark'
 }) {
   return (
     <>
@@ -31,20 +31,22 @@ export default function FormattedResponse({
           <CopyIcon text={apiReply} />
         </div>
       )}
-      {displayData && typeof displayData === 'object' ? (
-        <>
-          <MonacoEditor
-            language="json"
-            text={JSON.stringify(displayData, null, 2)}
-            theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
-            readOnly={true}
-            editorHeight="calc(100vh - 160px)"
-            languageSelectOptions={[]}
-          />
-        </>
-      ) : (
-        <pre>{String(displayData || '')}</pre>
-      )}
+      {displayData && typeof displayData === 'object'
+        ? (
+            <>
+              <MonacoEditor
+                language="json"
+                text={JSON.stringify(displayData, null, 2)}
+                theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
+                readOnly={true}
+                editorHeight="calc(100vh - 160px)"
+                languageSelectOptions={[]}
+              />
+            </>
+          )
+        : (
+            <pre>{String(displayData || '')}</pre>
+          )}
     </>
-  );
+  )
 }

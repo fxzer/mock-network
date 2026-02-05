@@ -1,5 +1,5 @@
-import * as React from 'react';
-import { Divider } from 'antd';
+import { Divider } from 'antd'
+import * as React from 'react'
 
 export default function RequestHeaders({ record }: { record: any }) {
   return (
@@ -32,7 +32,7 @@ export default function RequestHeaders({ record }: { record: any }) {
         <strong>Http Version:&nbsp;</strong>
         <span>{record.response.httpVersion}</span>
       </div>
-      {record.response.headers.map((v: { name: string; value: string }) => {
+      {record.response.headers.map((v: { name: string, value: string }) => {
         return (
           <div className="ajax-tools-devtools-text" key={v.name}>
             <strong>
@@ -41,7 +41,7 @@ export default function RequestHeaders({ record }: { record: any }) {
             </strong>
             <span>{v.value}</span>
           </div>
-        );
+        )
       })}
 
       <Divider orientation="left" style={{ margin: '12px 0 4px' }} />
@@ -52,7 +52,7 @@ export default function RequestHeaders({ record }: { record: any }) {
         <strong>Http Version:&nbsp;</strong>
         <span>{record.request.httpVersion}</span>
       </div>
-      {record.request.headers.map((v: { name: string; value: string }) => {
+      {record.request.headers.map((v: { name: string, value: string }) => {
         return (
           <div className="ajax-tools-devtools-text" key={v.name}>
             <strong>
@@ -61,8 +61,8 @@ export default function RequestHeaders({ record }: { record: any }) {
             </strong>
             <span>{v.value}</span>
           </div>
-        );
+        )
       })}
     </>
-  );
+  )
 }

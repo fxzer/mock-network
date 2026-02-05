@@ -1,39 +1,41 @@
-import * as React from 'react';
-import { useEffect, useState } from 'react';
-import MonacoEditor from '../../../components/MonacoEditor';
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import MonacoEditor from '../../../components/MonacoEditor'
 
-const formatText = (value: string) => {
-  let text = '';
+function formatText(value: string) {
+  let text = ''
   try {
-    text = JSON.stringify(JSON.parse(value), null, 4);
-  } catch (e) {
-    text = value;
+    text = JSON.stringify(JSON.parse(value), null, 4)
   }
-  return text;
-};
+  catch (e) {
+    text = value
+  }
+  return text
+}
 
 export default function RequestResponse({
   record,
   drawerOpen,
   theme,
 }: {
-  record: any;
-  drawerOpen: boolean;
-  theme?: 'light' | 'dark';
+  record: any
+  drawerOpen: boolean
+  theme?: 'light' | 'dark'
 }) {
-  const [response, setResponse] = useState('');
+  const [response, setResponse] = useState('')
   useEffect(() => {
     if (drawerOpen && record.getContent) {
       record.getContent((content: string) => {
-        setResponse(content);
-      });
+        setResponse(content)
+      })
     }
-  }, [drawerOpen, record]);
+  }, [drawerOpen, record])
 
-  let jsonContent = null;
+  let jsonContent = null
   try {
-    jsonContent = JSON.parse(response);
-  } catch (e) {
+    jsonContent = JSON.parse(response)
+  }
+  catch (e) {
     // ignore
   }
 
@@ -47,12 +49,12 @@ export default function RequestResponse({
         editorHeight="calc(100vh - 180px)"
         languageSelectOptions={[]}
       />
-    );
+    )
   }
 
   return (
     <>
       <pre>{formatText(response)}</pre>
     </>
-  );
+  )
 }

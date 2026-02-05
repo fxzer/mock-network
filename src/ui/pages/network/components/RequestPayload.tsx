@@ -1,32 +1,33 @@
-import * as React from 'react';
-import { Divider } from 'antd';
-import MonacoEditor from '../../../components/MonacoEditor';
+import { Divider } from 'antd'
+import * as React from 'react'
+import MonacoEditor from '../../../components/MonacoEditor'
 
 // Helper function duplicated for SFC independence, or could be imported from a utils file
-const formatText = (value: string) => {
-  let text = '';
+function formatText(value: string) {
+  let text = ''
   try {
-    text = JSON.stringify(JSON.parse(value), null, 4);
-  } catch (e) {
-    text = value;
+    text = JSON.stringify(JSON.parse(value), null, 4)
   }
-  return text;
-};
+  catch (e) {
+    text = value
+  }
+  return text
+}
 
 export default function RequestPayload({
   record,
   theme,
 }: {
-  record: any;
-  theme?: 'light' | 'dark';
+  record: any
+  theme?: 'light' | 'dark'
 }) {
-  const postData = record.request.postData || {};
+  const postData = record.request.postData || {}
   return (
     <>
       <h4>
         <strong>查询参数</strong>
       </h4>
-      {record.request.queryString.map((v: { name: string; value: string }) => {
+      {record.request.queryString.map((v: { name: string, value: string }) => {
         return (
           <div className="ajax-tools-devtools-text" key={v.name}>
             <strong>
@@ -35,7 +36,7 @@ export default function RequestPayload({
             </strong>
             <span>{v.value}</span>
           </div>
-        );
+        )
       })}
       <Divider orientation="left" style={{ margin: '12px 0 4px' }} />
       <h4>
@@ -51,7 +52,7 @@ export default function RequestPayload({
       <div style={{ marginTop: 8 }}>
         {(() => {
           try {
-            const json = JSON.parse(postData.text);
+            const json = JSON.parse(postData.text)
             if (typeof json === 'object' && json !== null) {
               return (
                 <MonacoEditor
@@ -62,18 +63,19 @@ export default function RequestPayload({
                   readOnly={true}
                   languageSelectOptions={[]}
                 />
-              );
+              )
             }
-          } catch (e) {
+          }
+          catch (e) {
             // ignore
           }
-          return <pre>{formatText(postData.text)}</pre>;
+          return <pre>{formatText(postData.text)}</pre>
         })()}
       </div>
       {postData.params && (
         <div className="ajax-tools-devtools-text">
           <strong>Params:&nbsp;</strong>
-          {(postData.params || []).map((v: { name: string; value: string }) => {
+          {(postData.params || []).map((v: { name: string, value: string }) => {
             return (
               <div className="ajax-tools-devtools-text" key={v.name}>
                 <strong>
@@ -82,10 +84,10 @@ export default function RequestPayload({
                 </strong>
                 <span>{v.value}</span>
               </div>
-            );
+            )
           })}
         </div>
       )}
     </>
-  );
+  )
 }

@@ -152,22 +152,16 @@ async function callbackIframeLoad(iframe) {
   if (!chrome.runtime?.id) return;
   try {
     // 检查 iframe 和 contentDocument 是否存在
-    if (
-      !iframe ||
-      !iframe.contentDocument ||
-      !iframe.contentDocument.documentElement
-    ) {
-      console.warn('iframe contentDocument not available');
+    const doc = iframe?.contentDocument;
+    if (!iframe || !doc || !doc.documentElement) {
+      // console.warn('iframe contentDocument not available');
       return;
     }
 
-    await injectedScript(
-      'src/inject/mock.js',
-      iframe.contentDocument.documentElement,
-    );
+    await injectedScript('src/inject/mock.js', doc.documentElement);
     const pageScripts = await injectedScript(
       'src/inject/index.js',
-      iframe.contentDocument.documentElement,
+      doc.documentElement,
     );
     if (pageScripts) {
       pageScripts.addEventListener('load', () => {

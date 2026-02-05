@@ -1,21 +1,21 @@
-import { FilterOutlined } from '@ant-design/icons';
-import { Drawer, Tabs } from 'antd';
-import * as React from 'react';
-import { useEffect, useState } from 'react';
-import { FormatApiMsg } from '../../utils';
-import CopyIcon from './components/CopyIcon';
-import FormattedResponse from './components/FormattedResponse';
-import RequestHeaders from './components/RequestHeaders';
-import RequestPayload from './components/RequestPayload';
-import RequestResponse from './components/RequestResponse';
-import './RequestDrawer.css';
+import { FilterOutlined } from '@ant-design/icons'
+import { Drawer, Tabs } from 'antd'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import FormatApiMsg from '../../components/FormatApiMsg'
+import CopyIcon from './components/CopyIcon'
+import FormattedResponse from './components/FormattedResponse'
+import RequestHeaders from './components/RequestHeaders'
+import RequestPayload from './components/RequestPayload'
+import RequestResponse from './components/RequestResponse'
+import './RequestDrawer.css'
 
 interface RequestDrawerProps {
-  drawerOpen: boolean;
-  record: any;
-  onClose: () => void;
-  onAddInterceptorClick: (record: any) => void;
-  theme?: 'light' | 'dark';
+  drawerOpen: boolean
+  record: any
+  onClose: () => void
+  onAddInterceptorClick: (record: any) => void
+  theme?: 'light' | 'dark'
 }
 
 function Wrapper(props: { children: any }) {
@@ -23,120 +23,126 @@ function Wrapper(props: { children: any }) {
     <div style={{ height: 'calc(100vh - 120px)', overflow: 'auto' }}>
       {props.children}
     </div>
-  );
+  )
 }
 
 // 纯函数：解析 API 响应，直接返回要展示的数据
-const parseApiResponse = (url: string, responseText: string) => {
+function parseApiResponse(url: string, responseText: string) {
   const result = {
     displayData: null as any,
     apiReply: '',
-  };
+  }
 
   if (!responseText || responseText === 'undefined') {
-    return result;
+    return result
   }
 
   // 非 API 接口，直接解析返回
   if (!url?.endsWith('/api') && !url?.includes('/api/result')) {
     try {
-      result.displayData = JSON.parse(responseText);
-    } catch {
-      result.displayData = responseText;
+      result.displayData = JSON.parse(responseText)
     }
-    return result;
+    catch {
+      result.displayData = responseText
+    }
+    return result
   }
 
   // API 接口，检查是否有特殊格式的 result 字段
   try {
-    const response = JSON.parse(responseText);
+    const response = JSON.parse(responseText)
 
     if (
-      response.result &&
-      typeof response.result === 'string' &&
-      response.result.includes('com.syscxp')
+      response.result
+      && typeof response.result === 'string'
+      && response.result.includes('com.syscxp')
     ) {
       // 解析双重编码的 result 字段
-      const resultObj = JSON.parse(response.result);
-      const firstKey = Object.keys(resultObj)[0];
+      const resultObj = JSON.parse(response.result)
+      const firstKey = Object.keys(resultObj)[0]
 
       if (firstKey) {
-        result.apiReply = firstKey;
-        result.displayData = resultObj[firstKey]; // 直接返回要展示的数据
-      } else {
-        result.displayData = response;
+        result.apiReply = firstKey
+        result.displayData = resultObj[firstKey] // 直接返回要展示的数据
       }
-    } else {
-      result.displayData = response;
+      else {
+        result.displayData = response
+      }
     }
-  } catch (e) {
-    console.error('解析 API 响应失败:', e);
-    result.displayData = responseText;
+    else {
+      result.displayData = response
+    }
+  }
+  catch (e) {
+    console.error('解析 API 响应失败:', e)
+    result.displayData = responseText
   }
 
-  return result;
-};
+  return result
+}
 
 export default (props: RequestDrawerProps) => {
-  const { drawerOpen, record, onClose, onAddInterceptorClick, theme } = props;
+  const { drawerOpen, record, onClose, onAddInterceptorClick, theme } = props
 
   // Lifted state
-  const [displayData, setDisplayData] = useState<any>(null);
-  const [apiReply, setApiReply] = useState('');
-  const [rawContent, setRawContent] = useState(''); // 保存原始响应内容
+  const [displayData, setDisplayData] = useState<any>(null)
+  const [apiReply, setApiReply] = useState('')
+  const [rawContent, setRawContent] = useState('') // 保存原始响应内容
 
   useEffect(() => {
     // Polyfill for navigator.clipboard.writeText to fix "Permissions policy violation"
     // blocked by the browser in this iframe context.
     if (!navigator.clipboard) {
-      (navigator as any).clipboard = {};
+      (navigator as any).clipboard = {}
     }
     navigator.clipboard.writeText = (text: string) => {
       return new Promise((resolve, reject) => {
         try {
           // Use legacy execCommand which is allowed
-          const textarea = document.createElement('textarea');
-          textarea.value = text;
-          textarea.style.position = 'fixed';
-          textarea.style.left = '-9999px';
-          textarea.style.top = '0';
-          document.body.appendChild(textarea);
-          textarea.focus();
-          textarea.select();
-          const successful = document.execCommand('copy');
-          document.body.removeChild(textarea);
+          const textarea = document.createElement('textarea')
+          textarea.value = text
+          textarea.style.position = 'fixed'
+          textarea.style.left = '-9999px'
+          textarea.style.top = '0'
+          document.body.appendChild(textarea)
+          textarea.focus()
+          textarea.select()
+          const successful = document.execCommand('copy')
+          document.body.removeChild(textarea)
           if (successful) {
             // message.success('已复制到剪贴板'); // 移除默认提示，由调用方控制
-            resolve();
-          } else {
-            console.error('Fallback: Copying text command failed');
-            reject(new Error('Copy command failed'));
+            resolve()
           }
-        } catch (err) {
-          console.error('Fallback: Oops, unable to copy', err);
-          reject(err);
+          else {
+            console.error('Fallback: Copying text command failed')
+            reject(new Error('Copy command failed'))
+          }
         }
-      });
-    };
-  }, []);
+        catch (err) {
+          console.error('Fallback: Oops, unable to copy', err)
+          reject(err)
+        }
+      })
+    }
+  }, [])
 
   useEffect(() => {
     if (drawerOpen && record.getContent) {
       record.getContent((content: string) => {
-        setRawContent(content); // 保存原始响应内容
-        const result = parseApiResponse(record.request.url, content);
-        setDisplayData(result.displayData);
-        setApiReply(result.apiReply);
-      });
+        setRawContent(content) // 保存原始响应内容
+        const result = parseApiResponse(record.request.url, content)
+        setDisplayData(result.displayData)
+        setApiReply(result.apiReply)
+      })
     }
-  }, [record, drawerOpen]);
+  }, [record, drawerOpen])
 
   const title = (
     <span>
       <span style={{ color: '#1890ff' }}>
-        {record?._displayFormattedPath ||
-          record?._displayPath ||
-          record?.request?.url}
+        {record?._displayFormattedPath
+          || record?._displayPath
+          || record?.request?.url}
       </span>
       {record?._displayApiMsg && (
         <span style={{ marginLeft: 12 }}>
@@ -145,7 +151,7 @@ export default (props: RequestDrawerProps) => {
         </span>
       )}
     </span>
-  );
+  )
   return (
     <Drawer
       title={<span style={{ fontSize: 12 }}>{title}</span>}
@@ -175,8 +181,8 @@ export default (props: RequestDrawerProps) => {
                   ...record,
                   _apiReply: apiReply,
                   _rawContent: rawContent, // 传递原始响应内容
-                };
-                onAddInterceptorClick(enhancedRecord);
+                }
+                onAddInterceptorClick(enhancedRecord)
               }}
             />
           ),
@@ -229,5 +235,5 @@ export default (props: RequestDrawerProps) => {
         ]}
       />
     </Drawer>
-  );
-};
+  )
+}

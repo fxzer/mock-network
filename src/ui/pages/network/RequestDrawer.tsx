@@ -1,13 +1,13 @@
-import {
-  CheckCircleFilled,
-  CopyOutlined,
-  FilterOutlined,
-} from '@ant-design/icons';
-import { Divider, Drawer, Tabs } from 'antd';
+import { FilterOutlined } from '@ant-design/icons';
+import { Drawer, Tabs } from 'antd';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import MonacoEditor from '../../components/MonacoEditor';
 import { FormatApiMsg } from '../../utils';
+import CopyIcon from './components/CopyIcon';
+import FormattedResponse from './components/FormattedResponse';
+import RequestHeaders from './components/RequestHeaders';
+import RequestPayload from './components/RequestPayload';
+import RequestResponse from './components/RequestResponse';
 import './RequestDrawer.css';
 
 interface RequestDrawerProps {
@@ -17,6 +17,7 @@ interface RequestDrawerProps {
   onAddInterceptorClick: (record: any) => void;
   theme?: 'light' | 'dark';
 }
+
 function Wrapper(props: { children: any }) {
   return (
     <div style={{ height: 'calc(100vh - 120px)', overflow: 'auto' }}>
@@ -25,48 +26,56 @@ function Wrapper(props: { children: any }) {
   );
 }
 
-function CopyIcon({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    let timer: any;
-    if (copied) {
-      timer = setTimeout(() => {
-        setCopied(false);
-      }, 3000);
-    }
-    return () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    };
-  }, [copied]);
-
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!text) return;
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-    });
+// 纯函数：解析 API 响应，直接返回要展示的数据
+const parseApiResponse = (url: string, responseText: string) => {
+  const result = {
+    displayData: null as any,
+    apiReply: '',
   };
 
-  if (copied) {
-    return (
-      <CheckCircleFilled
-        style={{ marginLeft: 8, color: '#52c41a' }}
-        title="已复制"
-      />
-    );
+  if (!responseText || responseText === 'undefined') {
+    return result;
   }
 
-  return (
-    <CopyOutlined
-      style={{ marginLeft: 8, cursor: 'pointer', color: '#1890ff' }}
-      title="复制 API Msg"
-      onClick={handleCopy}
-    />
-  );
-}
+  // 非 API 接口，直接解析返回
+  if (!url?.endsWith('/api') && !url?.includes('/api/result')) {
+    try {
+      result.displayData = JSON.parse(responseText);
+    } catch {
+      result.displayData = responseText;
+    }
+    return result;
+  }
+
+  // API 接口，检查是否有特殊格式的 result 字段
+  try {
+    const response = JSON.parse(responseText);
+
+    if (
+      response.result &&
+      typeof response.result === 'string' &&
+      response.result.includes('com.syscxp')
+    ) {
+      // 解析双重编码的 result 字段
+      const resultObj = JSON.parse(response.result);
+      const firstKey = Object.keys(resultObj)[0];
+
+      if (firstKey) {
+        result.apiReply = firstKey;
+        result.displayData = resultObj[firstKey]; // 直接返回要展示的数据
+      } else {
+        result.displayData = response;
+      }
+    } else {
+      result.displayData = response;
+    }
+  } catch (e) {
+    console.error('解析 API 响应失败:', e);
+    result.displayData = responseText;
+  }
+
+  return result;
+};
 
 export default (props: RequestDrawerProps) => {
   const { drawerOpen, record, onClose, onAddInterceptorClick, theme } = props;
@@ -121,286 +130,6 @@ export default (props: RequestDrawerProps) => {
       });
     }
   }, [record, drawerOpen]);
-
-  // Headers component (unchanged)
-  const Headers = () => {
-    return (
-      <>
-        <h4>
-          <strong>General</strong>
-        </h4>
-        <div className="ajax-tools-devtools-text">
-          <strong>Request URL:&nbsp;</strong>
-          <span>{record.request.url}</span>
-        </div>
-        <div className="ajax-tools-devtools-text">
-          <strong>Request Method:&nbsp;</strong>
-          <span>{record.request.method}</span>
-        </div>
-        <div className="ajax-tools-devtools-text">
-          <strong>Status Code:&nbsp;</strong>
-          <span>{record.response.status}</span>
-        </div>
-        <div className="ajax-tools-devtools-text">
-          <strong>Remote Address:&nbsp;</strong>
-          <span>{record.serverIPAddress}</span>
-        </div>
-        {/* <div className="ajax-tools-devtools-text"> */}
-        {/*  <strong>Referrer Policy:&nbsp;</strong> */}
-        {/*  <span>xxx</span> */}
-        {/* </div> */}
-
-        <Divider orientation="left" style={{ margin: '12px 0 4px' }} />
-        <h4>
-          <strong>响应头</strong>
-        </h4>
-        <div className="ajax-tools-devtools-text">
-          <strong>Http Version:&nbsp;</strong>
-          <span>{record.response.httpVersion}</span>
-        </div>
-        {record.response.headers.map((v: { name: string; value: string }) => {
-          return (
-            <div className="ajax-tools-devtools-text" key={v.name}>
-              <strong>
-                {v.name}
-                :&nbsp;
-              </strong>
-              <span>{v.value}</span>
-            </div>
-          );
-        })}
-
-        <Divider orientation="left" style={{ margin: '12px 0 4px' }} />
-        <h4>
-          <strong>请求头</strong>
-        </h4>
-        <div className="ajax-tools-devtools-text">
-          <strong>Http Version:&nbsp;</strong>
-          <span>{record.request.httpVersion}</span>
-        </div>
-        {record.request.headers.map((v: { name: string; value: string }) => {
-          return (
-            <div className="ajax-tools-devtools-text" key={v.name}>
-              <strong>
-                {v.name}
-                :&nbsp;
-              </strong>
-              <span>{v.value}</span>
-            </div>
-          );
-        })}
-      </>
-    );
-  };
-  const formatText = (value: string) => {
-    let text = '';
-    try {
-      text = JSON.stringify(JSON.parse(value), null, 4);
-    } catch (e) {
-      text = value;
-    }
-    return text;
-  };
-
-  // 纯函数：解析 API 响应，直接返回要展示的数据
-  const parseApiResponse = (url: string, responseText: string) => {
-    const result = {
-      displayData: null as any,
-      apiReply: '',
-    };
-
-    if (!responseText || responseText === 'undefined') {
-      return result;
-    }
-
-    // 非 API 接口，直接解析返回
-    if (!url?.endsWith('/api') && !url?.includes('/api/result')) {
-      try {
-        result.displayData = JSON.parse(responseText);
-      } catch {
-        result.displayData = responseText;
-      }
-      return result;
-    }
-
-    // API 接口，检查是否有特殊格式的 result 字段
-    try {
-      const response = JSON.parse(responseText);
-
-      if (
-        response.result &&
-        typeof response.result === 'string' &&
-        response.result.includes('com.syscxp')
-      ) {
-        // 解析双重编码的 result 字段
-        const resultObj = JSON.parse(response.result);
-        const firstKey = Object.keys(resultObj)[0];
-
-        if (firstKey) {
-          result.apiReply = firstKey;
-          result.displayData = resultObj[firstKey]; // 直接返回要展示的数据
-        } else {
-          result.displayData = response;
-        }
-      } else {
-        result.displayData = response;
-      }
-    } catch (e) {
-      console.error('解析 API 响应失败:', e);
-      result.displayData = responseText;
-    }
-
-    return result;
-  };
-
-  const Payload = () => {
-    const postData = record.request.postData || {};
-    return (
-      <>
-        <h4>
-          <strong>查询参数</strong>
-        </h4>
-        {record.request.queryString.map(
-          (v: { name: string; value: string }) => {
-            return (
-              <div className="ajax-tools-devtools-text" key={v.name}>
-                <strong>
-                  {v.name}
-                  :&nbsp;
-                </strong>
-                <span>{v.value}</span>
-              </div>
-            );
-          },
-        )}
-        <Divider orientation="left" style={{ margin: '12px 0 4px' }} />
-        <h4>
-          <strong>请求载荷</strong>
-        </h4>
-        <div className="ajax-tools-devtools-text">
-          <strong>mimeType:&nbsp;</strong>
-          <span>{postData.mimeType}</span>
-        </div>
-        <div className="ajax-tools-devtools-text">
-          <strong>text:&nbsp;</strong>
-        </div>
-        <div style={{ marginTop: 8 }}>
-          {(() => {
-            try {
-              const json = JSON.parse(postData.text);
-              if (typeof json === 'object' && json !== null) {
-                return (
-                  <MonacoEditor
-                    language="json"
-                    text={JSON.stringify(json, null, 2)}
-                    theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
-                    editorHeight="calc(100vh - 240px)"
-                    readOnly={true}
-                    languageSelectOptions={[]}
-                  />
-                );
-              }
-            } catch (e) {
-              // ignore
-            }
-            return <pre>{formatText(postData.text)}</pre>;
-          })()}
-        </div>
-        {postData.params && (
-          <div className="ajax-tools-devtools-text">
-            <strong>Params:&nbsp;</strong>
-            {(postData.params || []).map(
-              (v: { name: string; value: string }) => {
-                return (
-                  <div className="ajax-tools-devtools-text" key={v.name}>
-                    <strong>
-                      {v.name}
-                      :&nbsp;
-                    </strong>
-                    <span>{v.value}</span>
-                  </div>
-                );
-              },
-            )}
-          </div>
-        )}
-      </>
-    );
-  };
-  const Response = () => {
-    const [response, setResponse] = useState('');
-    useEffect(() => {
-      if (drawerOpen && record.getContent) {
-        record.getContent((content: string) => {
-          setResponse(content);
-        });
-      }
-    }, []);
-
-    let jsonContent = null;
-    try {
-      jsonContent = JSON.parse(response);
-    } catch (e) {
-      // ignore
-    }
-
-    if (jsonContent && typeof jsonContent === 'object') {
-      return (
-        <MonacoEditor
-          language="json"
-          text={JSON.stringify(jsonContent, null, 2)}
-          theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
-          readOnly={true}
-          editorHeight="calc(100vh - 180px)"
-          languageSelectOptions={[]}
-        />
-      );
-    }
-
-    return (
-      <>
-        <pre>{formatText(response)}</pre>
-      </>
-    );
-  };
-
-  const FormattedResponse = () => {
-    return (
-      <>
-        {apiReply && (
-          <div
-            style={{
-              padding: '4px',
-              marginBottom: '12px',
-              background: theme === 'dark' ? 'rgb(0, 0, 0,0.2)' : '#f0f2f5',
-              color: theme === 'dark' ? '#e6e6e6' : '#666',
-              borderRadius: '4px',
-              borderLeft: '2px solid #1890ff',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <FormatApiMsg msgType={apiReply} />
-            <CopyIcon text={apiReply} />
-          </div>
-        )}
-        {displayData && typeof displayData === 'object' ? (
-          <>
-            <MonacoEditor
-              language="json"
-              text={JSON.stringify(displayData, null, 2)}
-              theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
-              readOnly={true}
-              editorHeight="calc(100vh - 160px)"
-              languageSelectOptions={[]}
-            />
-          </>
-        ) : (
-          <pre>{String(displayData || '')}</pre>
-        )}
-      </>
-    );
-  };
 
   const title = (
     <span>
@@ -458,7 +187,7 @@ export default (props: RequestDrawerProps) => {
             key: '1',
             children: (
               <Wrapper>
-                <Headers />
+                <RequestHeaders record={record} />
               </Wrapper>
             ),
           },
@@ -467,7 +196,7 @@ export default (props: RequestDrawerProps) => {
             key: '2',
             children: (
               <Wrapper>
-                <Payload />
+                <RequestPayload record={record} theme={theme} />
               </Wrapper>
             ),
           },
@@ -476,7 +205,11 @@ export default (props: RequestDrawerProps) => {
             key: '3',
             children: (
               <Wrapper>
-                <Response />
+                <RequestResponse
+                  record={record}
+                  drawerOpen={drawerOpen}
+                  theme={theme}
+                />
               </Wrapper>
             ),
           },
@@ -485,7 +218,11 @@ export default (props: RequestDrawerProps) => {
             key: '4',
             children: (
               <Wrapper>
-                <FormattedResponse />
+                <FormattedResponse
+                  apiReply={apiReply}
+                  displayData={displayData}
+                  theme={theme}
+                />
               </Wrapper>
             ),
           },

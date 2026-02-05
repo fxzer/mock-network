@@ -1,4 +1,6 @@
+import { message } from 'antd'
 import * as React from 'react'
+
 
 interface FormatApiMsgProps {
   msgType: string
@@ -33,6 +35,50 @@ export default function FormatApiMsg({
   const operationMatch = apiMethod.match(/^API(.+?)(Reply|Msg|Event)?$/)
   const operation = operationMatch ? operationMatch[1] : apiMethod
 
+  const handleCopy = (text: string) => {
+    // 尝试使用 navigator.clipboard
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        message.success('复制成功')
+      }).catch((err) => {
+        console.error('Clipboard API failed', err)
+        fallbackCopyTextToClipboard(text)
+      })
+    }
+    else {
+      fallbackCopyTextToClipboard(text)
+    }
+  }
+
+  const fallbackCopyTextToClipboard = (text: string) => {
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    
+    // Avoid scrolling to bottom
+    textArea.style.top = '0'
+    textArea.style.left = '0'
+    textArea.style.position = 'fixed'
+
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+
+    try {
+      const successful = document.execCommand('copy')
+      if (successful) {
+        message.success('复制成功')
+      } else {
+        message.error('复制失败')
+      }
+    }
+    catch (err) {
+      console.error('Fallback: Oops, unable to copy', err)
+      message.error('复制失败')
+    }
+
+    document.body.removeChild(textArea)
+  }
+
   return (
     <span
       style={{ fontFamily: 'monospace', fontSize: '12px', color: '#262626' }}
@@ -63,10 +109,7 @@ export default function FormatApiMsg({
         title={`点击复制: ${operation}`}
         onClick={(e) => {
           e.stopPropagation()
-          navigator.clipboard.writeText(operation).then(() => {
-            // 可以在这里添加一个提示，比如显示一个 tooltip
-            console.log('已复制:', operation)
-          })
+          handleCopy(operation)
         }}
       >
         {operation}

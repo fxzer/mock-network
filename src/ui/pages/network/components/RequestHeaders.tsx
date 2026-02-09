@@ -4,7 +4,7 @@ import * as React from 'react'
 export default function RequestHeaders({ record }: { record: any }) {
   return (
     <>
-      <h4>
+     <h4 className="ajax-tools-devtools-title" style={{ marginTop: 0 }}>
         <strong>General</strong>
       </h4>
       <div className="ajax-tools-devtools-text">
@@ -25,7 +25,7 @@ export default function RequestHeaders({ record }: { record: any }) {
       </div>
 
       <Divider orientation="left" style={{ margin: '12px 0 4px' }} />
-      <h4>
+        <h4 className="ajax-tools-devtools-title">
         <strong>响应头</strong>
       </h4>
       <div className="ajax-tools-devtools-text">
@@ -45,7 +45,7 @@ export default function RequestHeaders({ record }: { record: any }) {
       })}
 
       <Divider orientation="left" style={{ margin: '12px 0 4px' }} />
-      <h4>
+        <h4 className="ajax-tools-devtools-title">
         <strong>请求头</strong>
       </h4>
       <div className="ajax-tools-devtools-text">

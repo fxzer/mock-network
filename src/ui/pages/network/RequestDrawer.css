@@ -11,3 +11,8 @@
 body.dark-theme .ajax-tools-devtools-text:hover {
   background: #1f1f1f;
 }
+
+.ajax-tools-devtools-title{
+  margin-top: 8px;
+  margin-bottom: 8px;
+}

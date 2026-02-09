@@ -70,9 +70,24 @@ npm run build
 ### 4. 开始使用
 
 1. 打开任意网页（比如百度）。
-2. 点击右上角 MockNetwork 扩展图标。
 3. 侧边栏出现！点击 "+" 号添加一个拦截规则。
 4. 刷新页面，见证奇迹。
+
+## 📦 打包与分享
+
+如果你想把这个扩展分享给别人，或者生成一个干净的压缩包：
+
+```bash
+# 生成打包文件 (mock-network-extension.zip)
+node scripts/pack.js
+
+# 如果你想先自动构建 UI 再打包 (推荐)
+node scripts/pack.js -b
+```
+
+打包产物位于项目根目录：
+- `mock-network-extension.zip`：发送给别人即可。
+- `mock-network-extension/`：解压后的文件夹，可直接加载。
 
 ## 🤝 贡献代码
 

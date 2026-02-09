@@ -39,3 +39,6 @@ stats.html
 .cache
 coverage
 *.tsbuildinfo
+mock-network-extension
+mock-network-extension*.zip
+dist_packed

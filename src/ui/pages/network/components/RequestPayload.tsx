@@ -24,7 +24,7 @@ export default function RequestPayload({
   const postData = record.request.postData || {}
   return (
     <>
-      <h4>
+      <h4 className="ajax-tools-devtools-title" style={{ marginTop: 0 }}>
         <strong>查询参数</strong>
       </h4>
       {record.request.queryString.map((v: { name: string, value: string }) => {
@@ -39,7 +39,7 @@ export default function RequestPayload({
         )
       })}
       <Divider orientation="left" style={{ margin: '12px 0 4px' }} />
-      <h4>
+      <h4 className="ajax-tools-devtools-title">
         <strong>请求载荷</strong>
       </h4>
       <div className="ajax-tools-devtools-text">

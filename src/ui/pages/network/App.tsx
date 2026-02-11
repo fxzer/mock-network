@@ -315,7 +315,9 @@ export default function App() {
 
   const [recording, setRecording] = useState(true)
   const [uNetwork, setUNetwork] = useState<any>([])
-  const [filterKey, setFilterKey] = useState('')
+  const [filterKey, setFilterKey] = useState(
+    localStorage.getItem('uNetworkFilterKey') || '',
+  )
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [currRecord, setCurrRecord] = useState(null)
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null)
@@ -339,6 +341,10 @@ export default function App() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    localStorage.setItem('uNetworkFilterKey', filterKey)
+  }, [filterKey])
 
   const handleResize
     = (key: string) =>
@@ -805,6 +811,7 @@ export default function App() {
             placeholder="过滤（正则）"
             size="small"
             style={{ width: 160, marginLeft: 16, borderRadius: '999px' }}
+            value={filterKey}
             onChange={e => setFilterKey(e.target.value)}
           />
         </div>

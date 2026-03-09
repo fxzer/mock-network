@@ -80,11 +80,14 @@ function ModifyDataModal(
   const [responseLanguage, setResponseLanguage] = useState('json')
   const [responseText, setResponseText] = useState('')
 
-  useImperativeHandle(ref, () => ({
-    openModal,
-  }))
+  const blurActiveElement = () => {
+    const activeElement = document.activeElement
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur()
+    }
+  }
 
-  const openModal = ({
+  function openModal({
     groupIndex,
     interfaceIndex,
     activeTab,
@@ -96,7 +99,7 @@ function ModifyDataModal(
     requestPayloadText,
     responseLanguage,
     responseText,
-  }: OpenModalProps) => {
+  }: OpenModalProps) {
     setGroupIndex(groupIndex)
     setInterfaceIndex(interfaceIndex)
     setActiveTab(activeTab)
@@ -111,6 +114,10 @@ function ModifyDataModal(
     setResponseText(responseText)
     setVisible(true)
   }
+
+  useImperativeHandle(ref, () => ({
+    openModal,
+  }))
 
   const handleOk = () => {
     const { editorInstance: headersEditorInstance }
@@ -134,6 +141,7 @@ function ModifyDataModal(
       responseEditorValue,
       language,
     })
+    blurActiveElement()
     setVisible(false)
   }
 
@@ -150,7 +158,10 @@ function ModifyDataModal(
         width="95%"
         open={visible}
         onOk={handleOk}
-        onCancel={() => setVisible(false)}
+        onCancel={() => {
+          blurActiveElement()
+          setVisible(false)
+        }}
         okText="保存"
         cancelText="取消"
         bodyStyle={{

@@ -70,9 +70,12 @@ function MonacoEditor(
   props: MonacoEditorProps,
   ref: ForwardedRef<{ editorInstance: any }>,
 ) {
-  const editorRef = useRef(null)
+  const editorRef = useRef<HTMLDivElement | null>(null)
+  const editorInstanceRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const changeDisposableRef = useRef<monaco.IDisposable | null>(null)
+  const resizeFrameRef = useRef<number | null>(null)
   useImperativeHandle(ref, () => ({
-    editorInstance: editor,
+    editorInstance: editorInstanceRef.current,
   }))
   const {
     languageSelectOptions = ['json', 'javascript'],
@@ -89,9 +92,15 @@ function MonacoEditor(
   } = props
   const [editor, setEditor] = useState<any>(null)
   const [language, setLanguage] = useState<string>(props.language || 'json')
+
+  function formatDocumentAction() {
+    if (editor)
+      editor.getAction('editor.action.formatDocument').run()
+  }
+
   useEffect(() => {
-    if (!editor) {
-      const editor = monaco.editor.create(editorRef.current!, {
+    if (!editor && editorRef.current) {
+      const editor = monaco.editor.create(editorRef.current, {
         value: '',
         language,
         theme,
@@ -116,26 +125,61 @@ function MonacoEditor(
           return undefined
         },
       })
+      editorInstanceRef.current = editor
       setEditor(editor)
+
+      return () => {
+        const activeElement = document.activeElement
+        if (activeElement instanceof HTMLElement && editorRef.current?.contains(activeElement)) {
+          activeElement.blur()
+        }
+
+        const findController = editor.getContribution(
+          'editor.contrib.findController',
+        ) as { closeFindWidget?: () => void } | null
+        findController?.closeFindWidget?.()
+
+        changeDisposableRef.current?.dispose()
+        changeDisposableRef.current = null
+
+        if (resizeFrameRef.current !== null) {
+          cancelAnimationFrame(resizeFrameRef.current)
+          resizeFrameRef.current = null
+        }
+
+        const model = editor.getModel()
+        editor.dispose()
+        model?.dispose()
+        editorInstanceRef.current = null
+      }
     }
   }, [])
 
   useEffect(() => {
-    if (editor) {
-      if (onDidChangeContent) {
-        const timer = setTimeout(() => {
-          clearTimeout(timer)
-          editor.getModel()?.onDidChangeContent(() => {
-            onDidChangeContent(editor.getModel()?.getValue())
-          })
-        }, 500)
-      }
+    changeDisposableRef.current?.dispose()
+    changeDisposableRef.current = null
+
+    if (editor && onDidChangeContent) {
+      changeDisposableRef.current = editor.getModel()?.onDidChangeContent(() => {
+        onDidChangeContent(editor.getModel()?.getValue() || '')
+      }) || null
+    }
+
+    return () => {
+      changeDisposableRef.current?.dispose()
+      changeDisposableRef.current = null
     }
   }, [editor, onDidChangeContent])
 
   useEffect(() => {
     if (editor) {
-      editor.getModel().setValue(props.text || '')
+      const model = editor.getModel()
+      if (!model)
+        return
+
+      if (model.getValue() !== (props.text || '')) {
+        model.setValue(props.text || '')
+      }
       const timer = setTimeout(() => {
         clearTimeout(timer)
         // 格式化代码
@@ -156,23 +200,39 @@ function MonacoEditor(
     if (!editor || !editorRef.current)
       return
 
-    const resizeObserver = new ResizeObserver(() => {
-      // 调用 layout 方法让编辑器重新计算布局
-      editor.layout()
+    let lastWidth = 0
+    let lastHeight = 0
+    const resizeObserver = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (!entry)
+        return
+
+      const { width, height } = entry.contentRect
+      if (width === lastWidth && height === lastHeight)
+        return
+
+      lastWidth = width
+      lastHeight = height
+
+      if (resizeFrameRef.current !== null) {
+        cancelAnimationFrame(resizeFrameRef.current)
+      }
+      resizeFrameRef.current = requestAnimationFrame(() => {
+        resizeFrameRef.current = null
+        editor.layout()
+      })
     })
 
     resizeObserver.observe(editorRef.current)
 
     return () => {
       resizeObserver.disconnect()
+      if (resizeFrameRef.current !== null) {
+        cancelAnimationFrame(resizeFrameRef.current)
+        resizeFrameRef.current = null
+      }
     }
   }, [editor])
-
-  // 格式化代码
-  const formatDocumentAction = () => {
-    if (editor)
-      editor.getAction('editor.action.formatDocument').run()
-  }
 
   const onLanguageChange = (_language: string) => {
     if (editor) {

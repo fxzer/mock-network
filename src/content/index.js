@@ -1,14 +1,34 @@
 // 设置iframeVisible默认值，刷新后重置storage
 chrome.storage.local.set({ iframeVisible: true });
 
+function getRootDocument(root) {
+  return root?.ownerDocument || document;
+}
+
+function shouldInjectIntoRoot(root, ajaxToolsTopLevelOnly) {
+  const targetWindow = getRootDocument(root)?.defaultView;
+  if (!targetWindow) {
+    return false;
+  }
+  return targetWindow.self === targetWindow.top || !ajaxToolsTopLevelOnly;
+}
+
 async function injectedScript(path, root = document?.documentElement) {
   if (!chrome.runtime?.id || !root) return;
   // 获取顶层插入开关设置
   const result = await chrome.storage.local.get(['ajaxToolsTopLevelOnly']);
   const { ajaxToolsTopLevelOnly = true } = result;
-  if (window.self === window.top || !ajaxToolsTopLevelOnly) {
-    const scriptNode = document.createElement('script');
+  if (shouldInjectIntoRoot(root, ajaxToolsTopLevelOnly)) {
+    const doc = getRootDocument(root);
+    const existingScript = doc.querySelector(
+      `script[data-ajax-tools-script="${path}"]`,
+    );
+    if (existingScript) {
+      return existingScript;
+    }
+    const scriptNode = doc.createElement('script');
     scriptNode.src = chrome.runtime.getURL(path);
+    scriptNode.dataset.ajaxToolsScript = path;
     root.appendChild(scriptNode);
     return scriptNode;
   }
@@ -18,21 +38,41 @@ async function injectedCss(path, root = document?.documentElement) {
   // 获取顶层插入开关设置
   const result = await chrome.storage.local.get(['ajaxToolsTopLevelOnly']);
   const { ajaxToolsTopLevelOnly = true } = result;
-  if (window.self === window.top || !ajaxToolsTopLevelOnly) {
-    const linkElement = document.createElement('link');
+  if (shouldInjectIntoRoot(root, ajaxToolsTopLevelOnly)) {
+    const doc = getRootDocument(root);
+    const existingLink = doc.querySelector(
+      `link[data-ajax-tools-css="${path}"]`,
+    );
+    if (existingLink) {
+      return existingLink;
+    }
+    const linkElement = doc.createElement('link');
     linkElement.rel = 'stylesheet';
     linkElement.href = chrome.runtime.getURL(path);
+    linkElement.dataset.ajaxToolsCss = path;
     root.appendChild(linkElement);
     return linkElement;
   }
 }
-async function injectedStyle(styleContent, root = document?.documentElement) {
+async function injectedStyle(
+  styleContent,
+  root = document?.documentElement,
+  styleKey = 'ajax-tools-inline-style',
+) {
   if (!chrome.runtime?.id || !root) return;
   // 获取顶层插入开关设置
   const result = await chrome.storage.local.get(['ajaxToolsTopLevelOnly']);
   const { ajaxToolsTopLevelOnly = true } = result;
-  if (window.self === window.top || !ajaxToolsTopLevelOnly) {
-    const styleElement = document.createElement('style');
+  if (shouldInjectIntoRoot(root, ajaxToolsTopLevelOnly)) {
+    const doc = getRootDocument(root);
+    const existingStyle = doc.querySelector(
+      `style[data-ajax-tools-style="${styleKey}"]`,
+    );
+    if (existingStyle) {
+      return existingStyle;
+    }
+    const styleElement = doc.createElement('style');
+    styleElement.dataset.ajaxToolsStyle = styleKey;
     styleElement.textContent = styleContent;
     root.appendChild(styleElement);
     return styleElement;
@@ -102,7 +142,7 @@ async function injectContent() {
     .dark-theme .ajax-interceptor-icon {
       color: rgba(255, 255, 255, 0.85);
     }
-  `);
+  `, document?.documentElement, 'ajax-tools-interceptor-style');
   injectedScript('src/inject/mock.js');
   const pageScripts = await injectedScript('src/inject/index.js');
   if (pageScripts) {

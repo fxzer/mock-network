@@ -135,6 +135,12 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
   onInterfaceMove,
 }) => {
   const monacoEditorInnerRef = useRef<any>({})
+  const blurActiveElement = () => {
+    const activeElement = document.activeElement
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur()
+    }
+  }
   // 内层数据编辑弹窗状态
   const [innerEditModal, setInnerEditModal] = useState<{
     visible: boolean
@@ -198,6 +204,7 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
         'responseText',
         newResponseText,
       )
+      blurActiveElement()
       setInnerEditModal(prev => ({ ...prev, visible: false }))
     }
     catch (e) {
@@ -586,8 +593,10 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
         )}
         open={innerEditModal.visible}
         onOk={saveInnerEdit}
-        onCancel={() =>
-          setInnerEditModal(prev => ({ ...prev, visible: false }))}
+        onCancel={() => {
+          blurActiveElement()
+          setInnerEditModal(prev => ({ ...prev, visible: false }))
+        }}
         okText="保存"
         cancelText="取消"
         width="95%"

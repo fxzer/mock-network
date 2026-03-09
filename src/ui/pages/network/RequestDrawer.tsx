@@ -157,7 +157,7 @@ export default (props: RequestDrawerProps) => {
       title={<span style={{ fontSize: 12 }}>{title}</span>}
       open={drawerOpen}
       onClose={() => onClose()}
-      width="80%"
+      width="min(640px, 100vw)"
       placement="right"
       mask={false}
       headerStyle={{

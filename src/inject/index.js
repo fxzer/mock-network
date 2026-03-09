@@ -1,3 +1,9 @@
+(() => {
+if (window.__MOCK_NETWORK_AJAX_TOOLS_PAGE_SCRIPT_LOADED__) {
+  return;
+}
+window.__MOCK_NETWORK_AJAX_TOOLS_PAGE_SCRIPT_LOADED__ = true;
+
 const ajax_tools_space = {
   ajaxToolsSwitchOn: true,
   ajaxToolsSwitchOnNot200: true,
@@ -624,3 +630,4 @@ window.addEventListener(
   },
   false,
 );
+})();

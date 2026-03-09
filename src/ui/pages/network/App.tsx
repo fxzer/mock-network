@@ -190,6 +190,16 @@ function getColumns({
       },
     },
     {
+      title: 'ApiMsg',
+      dataIndex: 'apiMsg',
+      key: 'apiMsg',
+      width: columnWidths.apiMsg,
+      ellipsis: true,
+      render: (_: any, record: any) => {
+        return <FormatApiMsg msgType={record._displayApiMsg} hidePrefix />
+      },
+    },
+    {
       title: '路径',
       dataIndex: 'Path',
       key: 'Path',
@@ -211,16 +221,6 @@ function getColumns({
               || record.request.url}
           </span>
         )
-      },
-    },
-    {
-      title: 'ApiMsg',
-      dataIndex: 'apiMsg',
-      key: 'apiMsg',
-      width: columnWidths.apiMsg,
-      ellipsis: true,
-      render: (_: any, record: any) => {
-        return <FormatApiMsg msgType={record._displayApiMsg} hidePrefix />
       },
     },
     // ... other columns

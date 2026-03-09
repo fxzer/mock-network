@@ -1,6 +1,6 @@
 {
   "name": "MockNetwork",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "拦截和修改网络请求响应数据",
   "manifest_version": 3,
   "declarative_net_request": {

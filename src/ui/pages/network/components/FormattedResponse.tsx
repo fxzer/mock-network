@@ -7,10 +7,12 @@ export default function FormattedResponse({
   apiReply,
   displayData,
   theme,
+  editorHeight = 'calc(100vh - 160px)',
 }: {
   apiReply: string
   displayData: any
   theme?: 'light' | 'dark'
+  editorHeight?: string
 }) {
   return (
     <>
@@ -39,7 +41,7 @@ export default function FormattedResponse({
                 text={JSON.stringify(displayData, null, 2)}
                 theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
                 readOnly={true}
-                editorHeight="calc(100vh - 160px)"
+                editorHeight={editorHeight}
                 languageSelectOptions={[]}
               />
             </>

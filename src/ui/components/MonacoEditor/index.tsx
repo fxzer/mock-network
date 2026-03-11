@@ -107,8 +107,12 @@ function MonacoEditor(
         scrollBeyondLastLine: false,
         tabSize: 2,
         readOnly, // 只读模式
+        lineNumbersMinChars: 3, // 调整行号宽度
         minimap: {
           enabled: false, // 禁用 minimap
+        },
+        scrollbar: {
+          alwaysConsumeMouseWheel: false,
         },
       })
       // 添加保存快捷键

@@ -12,7 +12,15 @@ body.dark-theme .ajax-tools-devtools-text:hover {
   background: #1f1f1f;
 }
 
-.ajax-tools-devtools-title{
+.ajax-tools-devtools-title {
   margin-top: 8px;
   margin-bottom: 8px;
+}
+
+.compact-tabs .ant-tabs-nav {
+  margin: 0 0 10px 0 !important;
+}
+
+.compact-tabs .ant-tabs-tab {
+  padding: 6px 0 !important;
 }

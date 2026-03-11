@@ -1,27 +1,27 @@
 import { message } from 'antd'
 import * as React from 'react'
 
-
 interface FormatApiMsgProps {
-  msgType: string
-  hidePrefix?: boolean
+  msgType: string;
+  hidePrefix?: boolean;
+  fontSize?: string | number;
 }
 
 export default function FormatApiMsg({
   msgType,
   hidePrefix,
+  fontSize = '12px',
 }: FormatApiMsgProps) {
-  if (!msgType)
-    return null
+  if (!msgType) return null;
 
   // 按 '.header.' 分割
   const parts = msgType.split('.header.')
   if (parts.length < 2) {
     return (
-      <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+      <span style={{ fontFamily: 'monospace', fontSize }}>
         {msgType}
       </span>
-    )
+    );
   }
 
   const afterHeader = parts[1] // 例如: hybridwan.message.contact.APICreateAccountContactReply
@@ -53,7 +53,7 @@ export default function FormatApiMsg({
   const fallbackCopyTextToClipboard = (text: string) => {
     const textArea = document.createElement('textarea')
     textArea.value = text
-    
+
     // Avoid scrolling to bottom
     textArea.style.top = '0'
     textArea.style.left = '0'
@@ -67,7 +67,8 @@ export default function FormatApiMsg({
       const successful = document.execCommand('copy')
       if (successful) {
         message.success('复制成功')
-      } else {
+      }
+      else {
         message.error('复制失败')
       }
     }
@@ -81,7 +82,7 @@ export default function FormatApiMsg({
 
   return (
     <span
-      style={{ fontFamily: 'monospace', fontSize: '12px', color: '#262626' }}
+      style={{ fontFamily: 'monospace', fontSize, color: '#262626' }}
     >
       {!hidePrefix && (
         <span style={{ color: '#8c8c8c', marginLeft: '4px' }}>

@@ -194,8 +194,7 @@ function getColumns({
       width: columnWidths.apiMsg,
       ellipsis: true,
       render: (_: any, record: any) => {
-        return <FormatApiMsg msgType={record._displayApiMsg} hidePrefix fontSize="11px" />;
-      },
+                  return <FormatApiMsg msgType={record._displayApiMsg} hidePrefix fontSize="11px" disableCopy />;      },
     },
     {
       title: '路径',
@@ -380,8 +379,9 @@ export default function App() {
         const buffer = bridge.getBuffer();
         if (buffer && buffer.length > 0) {
           const processed = buffer.map(processRequest).filter(Boolean);
-          setUNetwork(processed);
-          uNetworkRef.current = processed;
+          const reversed = [...processed].reverse();
+          setUNetwork(reversed);
+          uNetworkRef.current = reversed;
         }
       }
     };
@@ -395,7 +395,7 @@ export default function App() {
 
       if (newRequests.length > 0) {
         setUNetwork((prev: any) => {
-          const next = [...prev, ...newRequests];
+          const next = [...newRequests.reverse(), ...prev];
           uNetworkRef.current = next;
           return next;
         });

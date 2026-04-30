@@ -5,12 +5,14 @@ interface FormatApiMsgProps {
   msgType: string;
   hidePrefix?: boolean;
   fontSize?: string | number;
+  disableCopy?: boolean;
 }
 
 export default function FormatApiMsg({
   msgType,
   hidePrefix,
   fontSize = '12px',
+  disableCopy = false,
 }: FormatApiMsgProps) {
   if (!msgType) return null;
 
@@ -105,10 +107,10 @@ export default function FormatApiMsg({
           fontWeight: 600,
           marginLeft: '2px',
           marginRight: '2px',
-          cursor: 'pointer',
+          cursor: disableCopy ? 'default' : 'pointer',
         }}
-        title={`点击复制: ${operation}`}
-        onClick={(e) => {
+        title={disableCopy ? undefined : `点击复制: ${operation}`}
+        onClick={disableCopy ? undefined : (e) => {
           e.stopPropagation()
           handleCopy(operation)
         }}

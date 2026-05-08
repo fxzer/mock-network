@@ -3,6 +3,22 @@ const requestBuffer = [];
 let isRecording = true;
 let panelWindow = null;
 
+function notifyPanelVisible(window) {
+  if (!window) {
+    return;
+  }
+
+  window.dispatchEvent(new Event('m-network-panel-shown'));
+  window.dispatchEvent(new Event('resize'));
+
+  if (typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('m-network-panel-shown'));
+      window.dispatchEvent(new Event('resize'));
+    });
+  }
+}
+
 // 监听网络请求
 chrome.devtools.network.onRequestFinished.addListener(request => {
   if (isRecording) {
@@ -44,6 +60,8 @@ chrome.devtools.panels.create(
       if (window.initializeFromBridge) {
         window.initializeFromBridge();
       }
+
+      notifyPanelVisible(window);
     });
 
     panel.onHidden.addListener(function () {

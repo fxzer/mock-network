@@ -20,7 +20,7 @@ import {
 } from 'antd';
 import * as React from 'react';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import FormatApiMsg from '../../components/FormatApiMsg';
 import { defaultInterface } from '../../constants';
 import useTheme from '../../hooks/useTheme';
@@ -317,6 +317,8 @@ export default function App() {
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [interceptorRules, setInterceptorRules] = useState<any[]>([]);
   const [ajaxToolsSwitchOn, setAjaxToolsSwitchOn] = useState(true);
+  const [tableScrollY, setTableScrollY] = useState(320);
+  const [virtualEnabled, setVirtualEnabled] = useState(false);
 
   // Column resizing state
   const [columnWidths, setColumnWidths] = useState({
@@ -349,8 +351,41 @@ export default function App() {
       });
     };
 
+  const updateTableViewport = useCallback(() => {
+    const viewportHeight = Math.max(
+      window.innerHeight ||
+        document.documentElement.clientHeight ||
+        document.body.clientHeight ||
+        0,
+      0,
+    );
+    setTableScrollY(Math.max(viewportHeight - 100, 240));
+    setVirtualEnabled(viewportHeight > 0);
+  }, []);
+
   // 用 ref 来保持最新的 uNetwork 引用，供 syncNetworkData 使用
   const uNetworkRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    const syncViewport = () => {
+      updateTableViewport();
+      window.requestAnimationFrame(updateTableViewport);
+    };
+
+    syncViewport();
+    window.addEventListener('resize', syncViewport);
+    window.addEventListener('m-network-panel-shown', syncViewport);
+    document.addEventListener('visibilitychange', syncViewport);
+
+    const timer = window.setTimeout(syncViewport, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('resize', syncViewport);
+      window.removeEventListener('m-network-panel-shown', syncViewport);
+      document.removeEventListener('visibilitychange', syncViewport);
+    };
+  }, [updateTableViewport]);
 
   const processRequest = (request: any) => {
     if (['fetch', 'xhr'].includes(request._resourceType)) {
@@ -383,6 +418,9 @@ export default function App() {
           setUNetwork(reversed);
           uNetworkRef.current = reversed;
         }
+
+        updateTableViewport();
+        window.requestAnimationFrame(updateTableViewport);
       }
     };
 
@@ -807,8 +845,8 @@ export default function App() {
           columns={columns}
           dataSource={filteredData}
           pagination={false}
-          scroll={{ y: window.innerHeight - 100, x: 600 }}
-          virtual
+          scroll={{ y: tableScrollY, x: 600 }}
+          virtual={virtualEnabled}
           rowKey="_internalId"
           rowClassName={(record: any) => {
             const isSelected =

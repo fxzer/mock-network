@@ -11,7 +11,7 @@ interface FormatApiMsgProps {
 
 const API_MODULE_COLOR_RULES = [
   { prefix: '/account/api', color: '#ef4444' },
-  { prefix: '/hybridwan/api', color: '#22c55e' },
+  { prefix: '/hybridwan/api', color: '#6366f1' },
   { prefix: '/cmidocking/api', color: '#f59e0b' },
   { prefix: '/tunnel/api', color: '#06b6d4' },
   { prefix: '/monitor-query/api', color: '#3b82f6' },

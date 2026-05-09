@@ -25,7 +25,7 @@ import {
 import * as React from 'react'
 import { useRef, useState } from 'react'
 import FormatApiMsg from '../../components/FormatApiMsg'
-import MonacoEditor from '../../components/MonacoEditor'
+import LazyMonacoEditor from '../../components/LazyMonacoEditor'
 import {
   HTTP_METHOD_MAP,
   INNER_DATA_RESPONSE_EXAMPLES,
@@ -604,15 +604,17 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
         destroyOnClose
         focusTriggerAfterClose={false}
       >
-        <MonacoEditor
-          ref={monacoEditorInnerRef}
-          language="json"
-          text={innerEditModal.innerValue}
-          theme={theme}
-          editorHeight="calc(100vh - 260px)"
-          languageSelectOptions={['json', 'javascript']}
-          examples={INNER_DATA_RESPONSE_EXAMPLES}
-        />
+        {innerEditModal.visible && (
+          <LazyMonacoEditor
+            ref={monacoEditorInnerRef}
+            language="json"
+            text={innerEditModal.innerValue}
+            theme={theme}
+            editorHeight="calc(100vh - 260px)"
+            languageSelectOptions={['json', 'javascript']}
+            examples={INNER_DATA_RESPONSE_EXAMPLES}
+          />
+        )}
       </Modal>
     </>
   )

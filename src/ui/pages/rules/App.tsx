@@ -2,7 +2,7 @@ import { ConfigProvider, theme } from 'antd'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { OpenNewWindowIcon } from '../../components/Icons'
-import MonacoEditor from '../../components/MonacoEditor'
+import LazyMonacoEditor from '../../components/LazyMonacoEditor'
 import { DECLARATIVE_NET_REQUEST_EXAMPLES } from '../../constants'
 import { popupWindow } from '../interceptor/PictureInPicture'
 
@@ -110,7 +110,7 @@ export default () => {
       }}
     >
       <div>
-        <MonacoEditor
+        <LazyMonacoEditor
           ref={monacoEditorRef}
           theme="vs"
           headerStyle={{

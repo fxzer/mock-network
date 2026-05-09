@@ -2,7 +2,7 @@ import type { ForwardedRef } from 'react'
 import { Card, Input, Modal, Select, Space, Tabs } from 'antd'
 import * as React from 'react'
 import { useImperativeHandle, useRef, useState } from 'react'
-import MonacoEditor from '../../components/MonacoEditor'
+import LazyMonacoEditor from '../../components/LazyMonacoEditor'
 import {
   HEADERS_EXAMPLES,
   HTTP_METHOD_MAP,
@@ -126,10 +126,11 @@ function ModifyDataModal(
       = monacoEditorRequestPayloadRef.current
     const { editorInstance: responseEditorInstance }
       = monacoEditorResponseRef.current
-    const headersEditorValue = headersEditorInstance?.getValue()
-    const requestPayloadEditorValue = requestPayloadEditorInstance?.getValue()
-    const responseEditorValue = responseEditorInstance?.getValue()
-    const language = responseEditorInstance?.getModel()?.getLanguageId()
+    const headersEditorValue = headersEditorInstance?.getValue() ?? headersText
+    const requestPayloadEditorValue
+      = requestPayloadEditorInstance?.getValue() ?? requestPayloadText
+    const responseEditorValue = responseEditorInstance?.getValue() ?? responseText
+    const language = responseEditorInstance?.getModel()?.getLanguageId() ?? responseLanguage
     onSave({
       groupIndex,
       interfaceIndex,
@@ -170,107 +171,109 @@ function ModifyDataModal(
         destroyOnClose
         focusTriggerAfterClose={false}
       >
-        <Tabs
-          defaultActiveKey={activeTab}
-          activeKey={activeTab}
-          size="small"
-          onChange={v => setActiveTab(v)}
-          items={[
-            {
-              label: `响应`,
-              key: 'Response',
-              children: (
-                <Wrapper>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      marginBottom: 8,
-                    }}
-                  >
-                    <div style={{ width: 100 }}>状态码</div>
-                    <Input
-                      value={replacementStatusCode}
-                      maxLength={3}
-                      size="small"
-                      placeholder="请输入要替换的状态码"
-                      onChange={e => setReplacementStatusCode(e.target.value)}
+        {visible && (
+          <Tabs
+            defaultActiveKey={activeTab}
+            activeKey={activeTab}
+            size="small"
+            onChange={v => setActiveTab(v)}
+            items={[
+              {
+                label: `响应`,
+                key: 'Response',
+                children: (
+                  <Wrapper>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginBottom: 8,
+                      }}
+                    >
+                      <div style={{ width: 100 }}>状态码</div>
+                      <Input
+                        value={replacementStatusCode}
+                        maxLength={3}
+                        size="small"
+                        placeholder="请输入要替换的状态码"
+                        onChange={e => setReplacementStatusCode(e.target.value)}
+                      />
+                    </div>
+                    <LazyMonacoEditor
+                      ref={monacoEditorResponseRef}
+                      language={responseLanguage}
+                      languageSelectOptions={['json', 'javascript']}
+                      text={responseText}
+                      examples={RESPONSE_EXAMPLES}
+                      editorHeight="calc(100vh - 300px - 40px)"
+                      theme={theme}
                     />
-                  </div>
-                  <MonacoEditor
-                    ref={monacoEditorResponseRef}
-                    language={responseLanguage}
-                    languageSelectOptions={['json', 'javascript']}
-                    text={responseText}
-                    examples={RESPONSE_EXAMPLES}
-                    editorHeight="calc(100vh - 300px - 40px)"
+                  </Wrapper>
+                ),
+              },
+              {
+                label: `请求`,
+                key: 'Request',
+                children: (
+                  <Wrapper>
+                    <Space
+                      direction="vertical"
+                      size="small"
+                      style={{ display: 'flex' }}
+                    >
+                      <Card title="替换请求 URL" type="inner" size="small">
+                        <Space.Compact style={{ width: '100%' }}>
+                          <Select
+                            popupMatchSelectWidth={false}
+                            value={replacementMethod}
+                            onChange={value => setReplacementMethod(value)}
+                          >
+                            <Select.Option value="">*(保持原值)</Select.Option>
+                            {HTTP_METHOD_MAP.map(method => (
+                              <Select.Option key={method} value={method}>
+                                {method}
+                              </Select.Option>
+                            ))}
+                          </Select>
+                          <Input
+                            value={replacementUrl}
+                            placeholder="请输入要替换的 URL"
+                            onChange={e => setReplacementUrl(e.target.value)}
+                          />
+                        </Space.Compact>
+                      </Card>
+                      <Card title="替换请求头" type="inner" size="small">
+                        <LazyMonacoEditor
+                          ref={monacoEditorHeadersRef}
+                          language="json"
+                          languageSelectOptions={['json', 'javascript']}
+                          text={headersText}
+                          editorHeight="calc(100vh - 300px - 168px)"
+                          examples={HEADERS_EXAMPLES}
+                          theme={theme}
+                        />
+                      </Card>
+                    </Space>
+                  </Wrapper>
+                ),
+              },
+              {
+                label: `请求载荷`,
+                key: 'RequestPayload',
+                children: (
+                  <LazyMonacoEditor
+                    ref={monacoEditorRequestPayloadRef}
+                    language="javascript"
+                    languageSelectOptions={['javascript']}
+                    text={requestPayloadText}
+                    examples={REQUEST_PAYLOAD_EXAMPLES}
                     theme={theme}
                   />
-                </Wrapper>
-              ),
-            },
-            {
-              label: `请求`,
-              key: 'Request',
-              children: (
-                <Wrapper>
-                  <Space
-                    direction="vertical"
-                    size="small"
-                    style={{ display: 'flex' }}
-                  >
-                    <Card title="替换请求 URL" type="inner" size="small">
-                      <Space.Compact style={{ width: '100%' }}>
-                        <Select
-                          popupMatchSelectWidth={false}
-                          value={replacementMethod}
-                          onChange={value => setReplacementMethod(value)}
-                        >
-                          <Select.Option value="">*(保持原值)</Select.Option>
-                          {HTTP_METHOD_MAP.map(method => (
-                            <Select.Option key={method} value={method}>
-                              {method}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                        <Input
-                          value={replacementUrl}
-                          placeholder="请输入要替换的 URL"
-                          onChange={e => setReplacementUrl(e.target.value)}
-                        />
-                      </Space.Compact>
-                    </Card>
-                    <Card title="替换请求头" type="inner" size="small">
-                      <MonacoEditor
-                        ref={monacoEditorHeadersRef}
-                        language="json"
-                        languageSelectOptions={['json', 'javascript']}
-                        text={headersText}
-                        editorHeight="calc(100vh - 300px - 168px)"
-                        examples={HEADERS_EXAMPLES}
-                        theme={theme}
-                      />
-                    </Card>
-                  </Space>
-                </Wrapper>
-              ),
-            },
-            {
-              label: `请求载荷`,
-              key: 'RequestPayload',
-              children: (
-                <MonacoEditor
-                  ref={monacoEditorRequestPayloadRef}
-                  language="javascript"
-                  languageSelectOptions={['javascript']}
-                  text={requestPayloadText}
-                  examples={REQUEST_PAYLOAD_EXAMPLES}
-                  theme={theme}
-                />
-              ),
-            },
-          ]}
-        />
+                ),
+              },
+            ]}
+          />
+        )}
       </Modal>
     </>
   )

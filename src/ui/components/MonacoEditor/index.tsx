@@ -7,16 +7,12 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 // @ts-ignore
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
-// @ts-ignore
-import tsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker'
 import * as React from 'react'
 import { useEffect, useImperativeHandle, useRef, useState } from 'react'
 // import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
 // import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
 // editor.all中可查看完整的
-import 'monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution' // 代码高亮&提示
 import 'monaco-editor/esm/vs/basic-languages/javascript/javascript.contribution' // 代码高亮&提示
-import 'monaco-editor/esm/vs/language/typescript/monaco.contribution' // 代码高亮&提示
 import 'monaco-editor/esm/vs/language/json/monaco.contribution' // 代码高亮&提示
 import 'monaco-editor/esm/vs/editor/contrib/contextmenu/browser/contextmenu.js' // 右键显示菜单
 import 'monaco-editor/esm/vs/editor/contrib/folding/browser/folding.js' // 折叠
@@ -41,16 +37,13 @@ self.MonacoEnvironment = {
       //   case 'handlebars':
       //   case 'razor':
       //     return new htmlWorker();
-      case 'typescript':
-      case 'javascript':
-        return new tsWorker()
       default:
         return new editorWorker()
     }
   },
 }
 
-interface MonacoEditorProps {
+export interface MonacoEditorProps {
   languageSelectOptions?: string[]
   editorHeight?: number | string
   language?: string
@@ -65,10 +58,13 @@ interface MonacoEditorProps {
   onSaveKeyword?: (arg0: any) => void
   readOnly?: boolean // 只读模式
 }
+export interface MonacoEditorHandle {
+  editorInstance: any
+}
 type ExamplesType = NonNullable<MonacoEditorProps['examples']>[number]
 function MonacoEditor(
   props: MonacoEditorProps,
-  ref: ForwardedRef<{ editorInstance: any }>,
+  ref: ForwardedRef<MonacoEditorHandle>,
 ) {
   const editorRef = useRef<HTMLDivElement | null>(null)
   const editorInstanceRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)

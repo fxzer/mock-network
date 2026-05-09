@@ -35,6 +35,25 @@ export default defineConfig({
           if (id.includes('monaco-editor')) {
             return 'monaco'
           }
+          if (id.includes('node_modules/@ant-design/icons/')) {
+            return 'antd-icons'
+          }
+          if (
+            id.includes('node_modules/@rc-component/')
+            || id.includes('node_modules/rc-')
+          ) {
+            return 'antd-rc'
+          }
+          if (id.includes('node_modules/antd/')) {
+            return 'antd'
+          }
+          if (
+            id.includes('node_modules/react/')
+            || id.includes('node_modules/react-dom/')
+            || id.includes('node_modules/scheduler/')
+          ) {
+            return 'react-vendor'
+          }
         },
         assetFileNames: 'static/css/[name]-[hash].[ext]',
         chunkFileNames: 'static/js/[name]-[hash].js',

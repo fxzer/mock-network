@@ -1,53 +1,60 @@
 import * as React from 'react'
 import FormatApiMsg from '../../../components/FormatApiMsg'
 import MonacoEditor from '../../../components/MonacoEditor'
+import { formatDisplayContent, getEditorTheme } from '../utils'
 import CopyIcon from './CopyIcon'
 
 export default function FormattedResponse({
   apiReply,
   displayData,
-  theme,
   editorHeight = 'calc(100vh - 160px)',
+  requestPath,
+  theme,
 }: {
   apiReply: string
-  displayData: any
-  theme?: 'light' | 'dark'
+  displayData: unknown
   editorHeight?: string
+  requestPath?: string
+  theme?: 'light' | 'dark'
 }) {
+  const formattedText = React.useMemo(
+    () => formatDisplayContent(displayData),
+    [displayData],
+  )
+
   return (
     <>
       {apiReply && (
         <div
           style={{
-            padding: '4px',
-            marginBottom: '12px',
-            background: theme === 'dark' ? 'rgb(0, 0, 0,0.2)' : '#f0f2f5',
-            color: theme === 'dark' ? '#e6e6e6' : '#666',
-            borderRadius: '4px',
-            borderLeft: '2px solid #1890ff',
-            display: 'flex',
             alignItems: 'center',
+            background: theme === 'dark' ? 'rgb(0, 0, 0, 0.2)' : '#f0f2f5',
+            borderLeft: '2px solid #1890ff',
+            borderRadius: '4px',
+            color: theme === 'dark' ? '#e6e6e6' : '#666',
+            display: 'flex',
+            marginBottom: '12px',
+            padding: '4px',
           }}
         >
-          <FormatApiMsg msgType={apiReply} />
+          <FormatApiMsg msgType={apiReply} requestPath={requestPath} />
           <CopyIcon text={apiReply} />
         </div>
       )}
+
       {displayData && typeof displayData === 'object'
         ? (
-            <>
-              <MonacoEditor
-                language="json"
-                text={JSON.stringify(displayData, null, 2)}
-                theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
-                readOnly={true}
-                editorHeight={editorHeight}
-                languageSelectOptions={[]}
-              />
-            </>
+            <MonacoEditor
+              language="json"
+              text={formattedText}
+              theme={getEditorTheme(theme)}
+              readOnly={true}
+              editorHeight={editorHeight}
+              languageSelectOptions={[]}
+            />
           )
         : (
-            <pre>{String(displayData || '')}</pre>
+            <pre>{formattedText}</pre>
           )}
     </>
   )

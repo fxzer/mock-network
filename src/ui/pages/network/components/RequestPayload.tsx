@@ -1,118 +1,131 @@
-import { Divider } from 'antd';
-import * as React from 'react';
-import MonacoEditor from '../../../components/MonacoEditor';
-import FormattedResponse from './FormattedResponse';
+import { Divider } from 'antd'
+import * as React from 'react'
+import MonacoEditor from '../../../components/MonacoEditor'
+import {
+  formatDisplayContent,
+  formatJsonLikeText,
+  getEditorTheme,
+  parseJsonSafely,
+} from '../utils'
+import CopyIcon from './CopyIcon'
+import FormattedResponse from './FormattedResponse'
 
-// Helper function duplicated for SFC independence, or could be imported from a utils file
-function formatText(value: string) {
-  let text = '';
-  try {
-    text = JSON.stringify(JSON.parse(value), null, 4);
-  } catch (e) {
-    text = value;
-  }
-  return text;
+function KeyValueList({
+  entries,
+}: {
+  entries: Array<{ name: string, value: string }>
+}) {
+  return entries.map(entry => (
+    <div className="ajax-tools-devtools-text" key={entry.name}>
+      <strong>
+        {entry.name}
+        :&nbsp;
+      </strong>
+      <span>{entry.value}</span>
+    </div>
+  ))
 }
 
 export default function RequestPayload({
-  record,
-  theme,
   apiReply,
   displayData,
+  record,
+  theme,
 }: {
-  record: any;
-  theme?: 'light' | 'dark';
-  apiReply?: string;
-  displayData?: any;
+  apiReply?: string
+  displayData?: unknown
+  record: any
+  theme?: 'light' | 'dark'
 }) {
-  const postData = record.request.postData || {};
+  const postData = record.request.postData || {}
+  const queryEntries = record.request.queryString || []
+  const paramEntries = postData.params || []
+  const payloadText = postData.text || ''
+  const parsedPayload = React.useMemo(
+    () => parseJsonSafely(payloadText),
+    [payloadText],
+  )
+  const requestPayloadText = React.useMemo(
+    () => formatJsonLikeText(payloadText),
+    [payloadText],
+  )
+  const formattedResponseText = React.useMemo(
+    () => formatDisplayContent(displayData),
+    [displayData],
+  )
+  const hasQueryEntries = queryEntries.length > 0
+
   return (
     <>
-      {record.request.queryString && record.request.queryString.length > 0 && (
+      {hasQueryEntries && (
         <>
           <h4 className="ajax-tools-devtools-title" style={{ marginTop: 0 }}>
             <strong>查询参数</strong>
           </h4>
-          {record.request.queryString.map(
-            (v: { name: string; value: string }) => {
-              return (
-                <div className="ajax-tools-devtools-text" key={v.name}>
-                  <strong>
-                    {v.name}
-                    :&nbsp;
-                  </strong>
-                  <span>{v.value}</span>
-                </div>
-              );
-            },
-          )}
+          <KeyValueList entries={queryEntries} />
           <Divider orientation="left" style={{ margin: '12px 0 4px' }} />
         </>
       )}
+
       <h4
         className="ajax-tools-devtools-title"
         style={{
-          ...(record.request.queryString &&
-          record.request.queryString.length > 0
-            ? {}
-            : { marginTop: 0 }),
-          display: 'flex',
           alignItems: 'center',
+          display: 'flex',
           justifyContent: 'space-between',
+          ...(hasQueryEntries ? {} : { marginTop: 0 }),
         }}
       >
-        <strong>请求载荷</strong>
+        <span style={{ alignItems: 'center', display: 'flex' }}>
+          <strong>请求载荷</strong>
+          {requestPayloadText && (
+            <CopyIcon text={requestPayloadText} title="复制请求载荷" />
+          )}
+        </span>
         {postData.mimeType && (
-          <span
-            style={{ fontSize: '12px', fontWeight: 'normal', color: '#999' }}
-          >
+          <span style={{ color: '#999', fontSize: '12px', fontWeight: 'normal' }}>
             {postData.mimeType}
           </span>
         )}
       </h4>
+
       <div style={{ marginTop: 8 }}>
-        {(() => {
-          try {
-            const json = JSON.parse(postData.text);
-            if (typeof json === 'object' && json !== null) {
-              return (
-                <MonacoEditor
-                  language="json"
-                  text={JSON.stringify(json, null, 2)}
-                  theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
-                  editorHeight="calc(100vh - 500px)"
-                  readOnly={true}
-                  languageSelectOptions={[]}
-                />
-              );
-            }
-          } catch (e) {
-            // ignore
-          }
-          return <pre>{formatText(postData.text)}</pre>;
-        })()}
+        {parsedPayload && typeof parsedPayload === 'object'
+          ? (
+              <MonacoEditor
+                language="json"
+                text={JSON.stringify(parsedPayload, null, 2)}
+                theme={getEditorTheme(theme)}
+                editorHeight="calc(100vh - 500px)"
+                readOnly={true}
+                languageSelectOptions={[]}
+              />
+            )
+          : (
+              <pre>{requestPayloadText}</pre>
+            )}
       </div>
-      {postData.params && (
+
+      {paramEntries.length > 0 && (
         <div className="ajax-tools-devtools-text">
           <strong>Params:&nbsp;</strong>
-          {(postData.params || []).map((v: { name: string; value: string }) => {
-            return (
-              <div className="ajax-tools-devtools-text" key={v.name}>
-                <strong>
-                  {v.name}
-                  :&nbsp;
-                </strong>
-                <span>{v.value}</span>
-              </div>
-            );
-          })}
+          <KeyValueList entries={paramEntries} />
         </div>
       )}
+
       {displayData !== undefined && displayData !== null && (
         <>
           <Divider orientation="left" style={{ margin: '12px 0 4px' }} />
           <h4 className="ajax-tools-devtools-title">
-            <strong>{apiReply ? '格式化响应' : '响应'}</strong>
+            <span style={{ alignItems: 'center', display: 'flex' }}>
+              <strong>{apiReply ? '格式化响应' : '响应'}</strong>
+              {formattedResponseText && (
+                <CopyIcon
+                  text={formattedResponseText}
+                  title={apiReply ? '复制格式化响应' : '复制响应'}
+                />
+              )}
+            </span>
           </h4>
           <div style={{ marginTop: 8 }}>
             <FormattedResponse
@@ -120,10 +133,11 @@ export default function RequestPayload({
               displayData={displayData}
               theme={theme}
               editorHeight="400px"
+              requestPath={record?.request?.url}
             />
           </div>
         </>
       )}
     </>
-  );
+  )
 }

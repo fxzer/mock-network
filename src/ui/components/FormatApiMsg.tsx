@@ -2,10 +2,87 @@ import { message } from 'antd'
 import * as React from 'react'
 
 interface FormatApiMsgProps {
-  msgType: string;
-  hidePrefix?: boolean;
-  fontSize?: string | number;
-  disableCopy?: boolean;
+  msgType: string
+  hidePrefix?: boolean
+  fontSize?: string | number
+  disableCopy?: boolean
+  requestPath?: string
+}
+
+const API_MODULE_COLOR_RULES = [
+  { prefix: '/account/api', color: '#ef4444' },
+  { prefix: '/hybridwan/api', color: '#22c55e' },
+  { prefix: '/cmidocking/api', color: '#f59e0b' },
+  { prefix: '/tunnel/api', color: '#06b6d4' },
+  { prefix: '/monitor-query/api', color: '#3b82f6' },
+  { prefix: '/alarm/api', color: '#f97316' },
+  { prefix: '/partner/api', color: '#14b8a6' },
+  { prefix: '/zstack/api', color: '#8b5cf6' },
+]
+
+function normalizeRequestPath(path?: string) {
+  if (!path) {
+    return ''
+  }
+
+  try {
+    return new URL(path).pathname
+  }
+  catch {
+    return path
+  }
+}
+
+function getModuleColor(requestPath?: string) {
+  const normalizedPath = normalizeRequestPath(requestPath)
+  const matchedRule = API_MODULE_COLOR_RULES.find(rule =>
+    normalizedPath.startsWith(rule.prefix),
+  )
+
+  return matchedRule?.color || '#ec4899'
+}
+
+function fallbackCopyTextToClipboard(text: string) {
+  const textArea = document.createElement('textarea')
+  textArea.value = text
+  textArea.style.top = '0'
+  textArea.style.left = '0'
+  textArea.style.position = 'fixed'
+
+  document.body.appendChild(textArea)
+  textArea.focus()
+  textArea.select()
+
+  try {
+    const successful = document.execCommand('copy')
+
+    if (successful) {
+      message.success('复制成功')
+    }
+    else {
+      message.error('复制失败')
+    }
+  }
+  catch (error) {
+    console.error('Fallback: Oops, unable to copy', error)
+    message.error('复制失败')
+  }
+
+  document.body.removeChild(textArea)
+}
+
+function handleCopy(text: string) {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      message.success('复制成功')
+    }).catch((error) => {
+      console.error('Clipboard API failed', error)
+      fallbackCopyTextToClipboard(text)
+    })
+    return
+  }
+
+  fallbackCopyTextToClipboard(text)
 }
 
 export default function FormatApiMsg({
@@ -13,79 +90,35 @@ export default function FormatApiMsg({
   hidePrefix,
   fontSize = '12px',
   disableCopy = false,
+  requestPath,
 }: FormatApiMsgProps) {
-  if (!msgType) return null;
+  if (!msgType) {
+    return null
+  }
 
-  // 按 '.header.' 分割
   const parts = msgType.split('.header.')
   if (parts.length < 2) {
     return (
       <span style={{ fontFamily: 'monospace', fontSize }}>
         {msgType}
       </span>
-    );
+    )
   }
 
-  const afterHeader = parts[1] // 例如: hybridwan.message.contact.APICreateAccountContactReply
+  const afterHeader = parts[1]
   const segments = afterHeader.split('.')
-
-  // 最后一段是 API 方法名，前面的是模块路径
-  const apiMethod = segments[segments.length - 1] // APICreateAccountContactReply
-  const modulePath = segments.slice(0, -1).join('.') // hybridwan.message.contact
-
-  // 提取 API 方法中的操作名 (去掉 API 前缀和 Reply/Msg 后缀)
+  const apiMethod = segments[segments.length - 1]
+  const modulePath = segments.slice(0, -1).join('.')
   const operationMatch = apiMethod.match(/^API(.+?)(Reply|Msg|Event)?$/)
   const operation = operationMatch ? operationMatch[1] : apiMethod
-
-  const handleCopy = (text: string) => {
-    // 尝试使用 navigator.clipboard
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => {
-        message.success('复制成功')
-      }).catch((err) => {
-        console.error('Clipboard API failed', err)
-        fallbackCopyTextToClipboard(text)
-      })
-    }
-    else {
-      fallbackCopyTextToClipboard(text)
-    }
-  }
-
-  const fallbackCopyTextToClipboard = (text: string) => {
-    const textArea = document.createElement('textarea')
-    textArea.value = text
-
-    // Avoid scrolling to bottom
-    textArea.style.top = '0'
-    textArea.style.left = '0'
-    textArea.style.position = 'fixed'
-
-    document.body.appendChild(textArea)
-    textArea.focus()
-    textArea.select()
-
-    try {
-      const successful = document.execCommand('copy')
-      if (successful) {
-        message.success('复制成功')
-      }
-      else {
-        message.error('复制失败')
-      }
-    }
-    catch (err) {
-      console.error('Fallback: Oops, unable to copy', err)
-      message.error('复制失败')
-    }
-
-    document.body.removeChild(textArea)
-  }
+  const moduleColor = getModuleColor(requestPath)
+  const suffix = apiMethod.replace(
+    /^API(.+?)(Reply|Msg|Event)?$/,
+    (_, __, matchedSuffix) => matchedSuffix || '',
+  )
 
   return (
-    <span
-      style={{ fontFamily: 'monospace', fontSize, color: '#262626' }}
-    >
+    <span style={{ color: '#262626', fontFamily: 'monospace', fontSize }}>
       {!hidePrefix && (
         <span style={{ color: '#8c8c8c', marginLeft: '4px' }}>
           {parts[0]}
@@ -94,7 +127,7 @@ export default function FormatApiMsg({
       )}
       <span
         style={{
-          color: '#ec4899',
+          color: moduleColor,
           fontWeight: 600,
         }}
       >
@@ -104,25 +137,22 @@ export default function FormatApiMsg({
       <span
         style={{
           color: '#a855f7',
+          cursor: disableCopy ? 'default' : 'pointer',
           fontWeight: 600,
           marginLeft: '2px',
           marginRight: '2px',
-          cursor: disableCopy ? 'default' : 'pointer',
         }}
         title={disableCopy ? undefined : `点击复制: ${operation}`}
-        onClick={disableCopy ? undefined : (e) => {
-          e.stopPropagation()
-          handleCopy(operation)
-        }}
+        onClick={disableCopy
+          ? undefined
+          : (event) => {
+              event.stopPropagation()
+              handleCopy(operation)
+            }}
       >
         {operation}
       </span>
-      <span style={{ color: '#8c8c8c' }}>
-        {apiMethod.replace(
-          /^API(.+?)(Reply|Msg|Event)?$/,
-          (_, __, suffix) => suffix || '',
-        )}
-      </span>
+      <span style={{ color: '#8c8c8c' }}>{suffix}</span>
     </span>
   )
 }

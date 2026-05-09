@@ -2,7 +2,13 @@ import { CheckCircleFilled, CopyOutlined } from '@ant-design/icons'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 
-export default function CopyIcon({ text }: { text: string }) {
+export default function CopyIcon({
+  text,
+  title = '复制',
+}: {
+  text: string
+  title?: string
+}) {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
@@ -65,7 +71,7 @@ export default function CopyIcon({ text }: { text: string }) {
   return (
     <CopyOutlined
       style={{ marginLeft: 8, cursor: 'pointer', color: '#1890ff' }}
-      title="复制 API Msg"
+      title={title}
       onClick={handleCopy}
     />
   )

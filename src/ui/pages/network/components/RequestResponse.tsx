@@ -1,50 +1,36 @@
+import { Spin } from 'antd'
 import * as React from 'react'
-import { useEffect, useState } from 'react'
 import MonacoEditor from '../../../components/MonacoEditor'
-
-function formatText(value: string) {
-  let text = ''
-  try {
-    text = JSON.stringify(JSON.parse(value), null, 4)
-  }
-  catch (e) {
-    text = value
-  }
-  return text
-}
+import {
+  formatJsonLikeText,
+  getEditorTheme,
+  parseJsonSafely,
+} from '../utils'
 
 export default function RequestResponse({
-  record,
-  drawerOpen,
+  loading = false,
+  responseContent,
   theme,
 }: {
-  record: any
-  drawerOpen: boolean
+  loading?: boolean
+  responseContent: string
   theme?: 'light' | 'dark'
 }) {
-  const [response, setResponse] = useState('')
-  useEffect(() => {
-    if (drawerOpen && record.getContent) {
-      record.getContent((content: string) => {
-        setResponse(content)
-      })
-    }
-  }, [drawerOpen, record])
+  const parsedResponse = React.useMemo(
+    () => parseJsonSafely(responseContent),
+    [responseContent],
+  )
 
-  let jsonContent = null
-  try {
-    jsonContent = JSON.parse(response)
-  }
-  catch (e) {
-    // ignore
+  if (loading && !responseContent) {
+    return <Spin size="small" />
   }
 
-  if (jsonContent && typeof jsonContent === 'object') {
+  if (parsedResponse && typeof parsedResponse === 'object') {
     return (
       <MonacoEditor
         language="json"
-        text={JSON.stringify(jsonContent, null, 2)}
-        theme={theme === 'dark' ? 'vs-dark' : 'vs-light'}
+        text={JSON.stringify(parsedResponse, null, 2)}
+        theme={getEditorTheme(theme)}
         readOnly={true}
         editorHeight="calc(100vh - 180px)"
         languageSelectOptions={[]}
@@ -52,9 +38,5 @@ export default function RequestResponse({
     )
   }
 
-  return (
-    <>
-      <pre>{formatText(response)}</pre>
-    </>
-  )
+  return <pre>{formatJsonLikeText(responseContent)}</pre>
 }

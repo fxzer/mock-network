@@ -192,6 +192,19 @@ function toNameValueEntries(entries: any): NameValueEntry[] {
   }))
 }
 
+function getChromeLocalStorage(keys: string | string[]) {
+  return new Promise<any>((resolve, reject) => {
+    chrome.storage.local.get(keys, (result) => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError)
+        return
+      }
+
+      resolve(result)
+    })
+  })
+}
+
 function normalizeNetworkRecord(record: any): NetworkRecord | null {
   if (!record?.request || !['fetch', 'xhr'].includes(record._resourceType)) {
     return null
@@ -261,6 +274,24 @@ function isRecordIntercepted(
       && ruleLookup.payload.has(record._lookupOperation))
     || (!!record._lookupPath && ruleLookup.normal.has(record._lookupPath))
   )
+}
+
+function getStatusTextColor(status: number | string | undefined) {
+  const normalizedStatus = String(status ?? '')
+
+  if (normalizedStatus === '200') {
+    return '#22c55e'
+  }
+
+  if (normalizedStatus.startsWith('4')) {
+    return '#ef4444'
+  }
+
+  if (normalizedStatus.startsWith('3')) {
+    return '#f59e0b'
+  }
+
+  return undefined
 }
 
 function getColumns({
@@ -336,7 +367,7 @@ function getColumns({
           msgType={record._displayApiMsg || ''}
           hidePrefix
           fontSize="11px"
-          disableCopy
+          requestPath={record.request.url}
         />
       ),
     },
@@ -373,6 +404,11 @@ function getColumns({
       key: 'status',
       width: 54,
       align: 'center' as const,
+      render: (status: number | string | undefined) => (
+        <span style={{ color: getStatusTextColor(status), fontWeight: 600 }}>
+          {status}
+        </span>
+      ),
     },
     {
       title: '类型',
@@ -448,6 +484,9 @@ export default function App() {
   const [filterKey, setFilterKey] = useState(
     localStorage.getItem('uNetworkFilterKey') || '',
   )
+  const [apiMsgFilterKey, setApiMsgFilterKey] = useState(
+    localStorage.getItem('uNetworkApiMsgFilterKey') || '',
+  )
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [currRecord, setCurrRecord] = useState<NetworkRecord | null>(null)
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null)
@@ -482,6 +521,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('uNetworkFilterKey', filterKey)
   }, [filterKey])
+
+  useEffect(() => {
+    localStorage.setItem('uNetworkApiMsgFilterKey', apiMsgFilterKey)
+  }, [apiMsgFilterKey])
 
   const handleResize = useCallback(
     (key: string) =>
@@ -607,18 +650,6 @@ export default function App() {
 
     initializeFromBridge()
 
-    const getChromeLocalStorage = (keys: string | string[]) =>
-      new Promise<any>((resolve, reject) => {
-        chrome.storage.local.get(keys, (result) => {
-          if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError)
-            return
-          }
-
-          resolve(result)
-        })
-      })
-
     getChromeLocalStorage(['ajaxDataList', 'ajaxToolsSwitchOn']).then((result) => {
       const list = result.ajaxDataList || []
       const rules = list.flatMap(
@@ -682,21 +713,6 @@ export default function App() {
       bridge.clearBuffer()
     }
   }, [])
-
-  const getChromeLocalStorage = useCallback(
-    (keys: string | string[]) =>
-      new Promise<any>((resolve, reject) => {
-        chrome.storage.local.get(keys, (result) => {
-          if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError)
-            return
-          }
-
-          resolve(result)
-        })
-      }),
-    [],
-  )
 
   const showSidePage = useCallback((iframeVisible: undefined | boolean) => {
     if (!iframeVisible) {
@@ -881,7 +897,7 @@ export default function App() {
     catch (error) {
       console.error(error)
     }
-  }, [addInterceptorIfNeeded, getChromeLocalStorage, modal])
+  }, [addInterceptorIfNeeded, modal])
 
   const onAddInterceptorClick = useCallback((record: NetworkRecord) => {
     if (!record?.request?.url) {
@@ -971,10 +987,20 @@ export default function App() {
   }, [])
 
   const filterRegExp = useMemo(() => strToRegExp(filterKey), [filterKey])
+  const apiMsgFilterRegExp = useMemo(
+    () => strToRegExp(apiMsgFilterKey),
+    [apiMsgFilterKey],
+  )
 
   const filteredData = useMemo(
-    () => uNetwork.filter(record => record.request.url.match(filterRegExp)),
-    [filterRegExp, uNetwork],
+    () =>
+      uNetwork.filter((record) => {
+        const matchesPath = record.request.url.match(filterRegExp)
+        const matchesApiMsg = (record._displayApiMsg || '').match(apiMsgFilterRegExp)
+
+        return !!matchesPath && !!matchesApiMsg
+      }),
+    [apiMsgFilterRegExp, filterRegExp, uNetwork],
   )
 
   const interceptorRuleLookup = useMemo<InterceptorRuleLookup>(() => {
@@ -1057,11 +1083,20 @@ export default function App() {
             onClick={handleClear}
           />
           <Input
-            placeholder="过滤（正则）"
+            allowClear
+            placeholder="Path 过滤（正则）"
             size="small"
             style={{ borderRadius: '999px', marginLeft: 16, width: 160 }}
             value={filterKey}
             onChange={event => setFilterKey(event.target.value)}
+          />
+          <Input
+            allowClear
+            placeholder="ApiMsg 过滤（正则）"
+            size="small"
+            style={{ borderRadius: '999px', marginLeft: 8, width: 180 }}
+            value={apiMsgFilterKey}
+            onChange={event => setApiMsgFilterKey(event.target.value)}
           />
         </div>
 

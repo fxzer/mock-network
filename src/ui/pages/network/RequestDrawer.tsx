@@ -1,165 +1,286 @@
-import { FilterOutlined } from '@ant-design/icons';
-import { Drawer, Tabs } from 'antd';
-import * as React from 'react';
-import { useEffect, useState } from 'react';
-import FormatApiMsg from '../../components/FormatApiMsg';
-import CopyIcon from './components/CopyIcon';
-import FormattedResponse from './components/FormattedResponse';
-import RequestHeaders from './components/RequestHeaders';
-import RequestPayload from './components/RequestPayload';
-import RequestResponse from './components/RequestResponse';
-import './RequestDrawer.css';
+import { FilterOutlined } from '@ant-design/icons'
+import { Drawer, Tabs } from 'antd'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import FormatApiMsg from '../../components/FormatApiMsg'
+import CopyIcon from './components/CopyIcon'
+import FormattedResponse from './components/FormattedResponse'
+import RequestHeaders from './components/RequestHeaders'
+import RequestPayload from './components/RequestPayload'
+import RequestResponse from './components/RequestResponse'
+import { parseDrawerApiResponse } from './utils'
+import './RequestDrawer.css'
+
+const DRAWER_SIZE_STORAGE_KEY = 'uNetworkDrawerSize'
+const DEFAULT_DRAWER_SIZE = 500
+const MIN_DRAWER_SIZE = 320
+const DRAWER_VIEWPORT_PADDING = 24
 
 interface RequestDrawerProps {
-  drawerOpen: boolean;
-  record: any;
-  onClose: () => void;
-  onAddInterceptorClick: (record: any) => void;
-  theme?: 'light' | 'dark';
+  drawerOpen: boolean
+  record: any
+  onClose: () => void
+  onAddInterceptorClick: (record: any) => void
+  theme?: 'light' | 'dark'
 }
 
-function Wrapper(props: { children: any }) {
+function clampDrawerSize(size: number, viewportWidth: number) {
+  const maxSize = Math.max(
+    MIN_DRAWER_SIZE,
+    viewportWidth - DRAWER_VIEWPORT_PADDING,
+  )
+
+  return Math.min(Math.max(size, MIN_DRAWER_SIZE), maxSize)
+}
+
+function getInitialDrawerSize() {
+  const savedSize = Number(localStorage.getItem(DRAWER_SIZE_STORAGE_KEY))
+  const initialSize = Number.isFinite(savedSize) && savedSize > 0
+    ? savedSize
+    : DEFAULT_DRAWER_SIZE
+
+  return clampDrawerSize(initialSize, window.innerWidth)
+}
+
+function ensureClipboardWriteTextPolyfill() {
+  if (navigator.clipboard?.writeText) {
+    return
+  }
+
+  if (!navigator.clipboard) {
+    ;(navigator as any).clipboard = {}
+  }
+
+  navigator.clipboard.writeText = (text: string) =>
+    new Promise((resolve, reject) => {
+      try {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        textarea.style.position = 'fixed'
+        textarea.style.left = '-9999px'
+        textarea.style.top = '0'
+        document.body.appendChild(textarea)
+        textarea.focus()
+        textarea.select()
+
+        const successful = document.execCommand('copy')
+        document.body.removeChild(textarea)
+
+        if (successful) {
+          resolve()
+          return
+        }
+
+        console.error('Fallback: Copying text command failed')
+        reject(new Error('Copy command failed'))
+      }
+      catch (error) {
+        console.error('Fallback: Oops, unable to copy', error)
+        reject(error)
+      }
+    })
+}
+
+function DrawerContentWrapper(props: { children: React.ReactNode }) {
   return (
     <div style={{ height: 'calc(100vh - 120px)', overflow: 'auto' }}>
       {props.children}
     </div>
-  );
+  )
 }
 
-// 纯函数：解析 API 响应，直接返回要展示的数据
-function parseApiResponse(url: string, responseText: string) {
-  const result = {
-    displayData: null as any,
-    apiReply: '',
-  };
+export default function RequestDrawer(props: RequestDrawerProps) {
+  const { drawerOpen, record, onClose, onAddInterceptorClick, theme } = props
 
-  if (!responseText || responseText === 'undefined') {
-    return result;
-  }
-
-  // 非 API 接口，直接解析返回
-  if (!url?.endsWith('/api') && !url?.includes('/api/result')) {
-    try {
-      result.displayData = JSON.parse(responseText);
-    } catch {
-      result.displayData = responseText;
-    }
-    return result;
-  }
-
-  // API 接口，检查是否有特殊格式的 result 字段
-  try {
-    const response = JSON.parse(responseText);
-
-    if (
-      response.result &&
-      typeof response.result === 'string' &&
-      response.result.includes('com.syscxp')
-    ) {
-      // 解析双重编码的 result 字段
-      const resultObj = JSON.parse(response.result);
-      const firstKey = Object.keys(resultObj)[0];
-
-      if (firstKey) {
-        result.apiReply = firstKey;
-        result.displayData = resultObj[firstKey]; // 直接返回要展示的数据
-      } else {
-        result.displayData = response;
-      }
-    } else {
-      result.displayData = response;
-    }
-  } catch (e) {
-    console.error('解析 API 响应失败:', e);
-    result.displayData = responseText;
-  }
-
-  return result;
-}
-
-export default (props: RequestDrawerProps) => {
-  const { drawerOpen, record, onClose, onAddInterceptorClick, theme } = props;
-
-  // Lifted state
-  const [displayData, setDisplayData] = useState<any>(null);
-  const [apiReply, setApiReply] = useState('');
-  const [rawContent, setRawContent] = useState(''); // 保存原始响应内容
   const [activeTab, setActiveTab] = useState(
     localStorage.getItem('uNetworkActiveTab') || '2',
-  );
+  )
+  const [viewportWidth, setViewportWidth] = useState(window.innerWidth)
+  const [drawerSize, setDrawerSize] = useState(getInitialDrawerSize)
+  const [apiReply, setApiReply] = useState('')
+  const [displayData, setDisplayData] = useState<unknown>(null)
+  const [rawContent, setRawContent] = useState('')
+  const [contentLoading, setContentLoading] = useState(false)
 
   useEffect(() => {
-    // Polyfill for navigator.clipboard.writeText to fix "Permissions policy violation"
-    // blocked by the browser in this iframe context.
-    if (!navigator.clipboard) {
-      (navigator as any).clipboard = {};
-    }
-    navigator.clipboard.writeText = (text: string) => {
-      return new Promise((resolve, reject) => {
-        try {
-          // Use legacy execCommand which is allowed
-          const textarea = document.createElement('textarea');
-          textarea.value = text;
-          textarea.style.position = 'fixed';
-          textarea.style.left = '-9999px';
-          textarea.style.top = '0';
-          document.body.appendChild(textarea);
-          textarea.focus();
-          textarea.select();
-          const successful = document.execCommand('copy');
-          document.body.removeChild(textarea);
-          if (successful) {
-            // message.success('已复制到剪贴板'); // 移除默认提示，由调用方控制
-            resolve();
-          } else {
-            console.error('Fallback: Copying text command failed');
-            reject(new Error('Copy command failed'));
-          }
-        } catch (err) {
-          console.error('Fallback: Oops, unable to copy', err);
-          reject(err);
-        }
-      });
-    };
-  }, []);
+    ensureClipboardWriteTextPolyfill()
+  }, [])
 
   useEffect(() => {
-    if (drawerOpen && record.getContent) {
-      record.getContent((content: string) => {
-        setRawContent(content); // 保存原始响应内容
-        const result = parseApiResponse(record.request.url, content);
-        setDisplayData(result.displayData);
-        setApiReply(result.apiReply);
-      });
+    const syncViewportWidth = () => {
+      setViewportWidth(window.innerWidth)
     }
-  }, [record, drawerOpen]);
 
-  const title = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <span style={{ color: '#1890ff' }}>
-        {record?._displayFormattedPath ||
-          record?._displayPath ||
-          record?.request?.url}
-      </span>
-      {record?._displayApiMsg && (
-        <span>
-          <FormatApiMsg msgType={record._displayApiMsg} />
-          <CopyIcon text={record._displayApiMsg} />
+    window.addEventListener('resize', syncViewportWidth)
+    return () => {
+      window.removeEventListener('resize', syncViewportWidth)
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+
+    if (!drawerOpen || !record?.request?.url) {
+      setContentLoading(false)
+      return () => {
+        active = false
+      }
+    }
+
+    const applyContent = (content: string) => {
+      if (!active) {
+        return
+      }
+
+      const nextRawContent = content || ''
+      const parsedResponse = parseDrawerApiResponse(record.request.url, nextRawContent)
+
+      record._rawContent = nextRawContent
+      record._apiReply = parsedResponse.apiReply
+
+      setRawContent(nextRawContent)
+      setDisplayData(parsedResponse.displayData)
+      setApiReply(parsedResponse.apiReply)
+      setContentLoading(false)
+    }
+
+    setRawContent('')
+    setDisplayData(null)
+    setApiReply('')
+
+    if (typeof record._rawContent === 'string') {
+      applyContent(record._rawContent)
+      return () => {
+        active = false
+      }
+    }
+
+    if (!record.getContent) {
+      setContentLoading(false)
+      return () => {
+        active = false
+      }
+    }
+
+    setContentLoading(true)
+    record.getContent(applyContent)
+
+    return () => {
+      active = false
+    }
+  }, [drawerOpen, record])
+
+  const handleTabChange = useCallback((key: string) => {
+    setActiveTab(key)
+    localStorage.setItem('uNetworkActiveTab', key)
+  }, [])
+
+  const handleResize = useCallback((newSize: number) => {
+    const nextSize = clampDrawerSize(newSize, viewportWidth)
+    setDrawerSize(nextSize)
+    localStorage.setItem(DRAWER_SIZE_STORAGE_KEY, String(nextSize))
+  }, [viewportWidth])
+
+  const handleAddToInterceptor = useCallback(() => {
+    onAddInterceptorClick({
+      ...record,
+      _apiReply: apiReply,
+      _rawContent: rawContent,
+    })
+  }, [apiReply, onAddInterceptorClick, rawContent, record])
+
+  const effectiveDrawerSize = clampDrawerSize(drawerSize, viewportWidth)
+
+  const title = useMemo(
+    () => (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <span style={{ color: '#1890ff' }}>
+          {record?._displayFormattedPath
+            || record?._displayPath
+            || record?.request?.url}
         </span>
-      )}
-    </div>
-  );
+        {record?._displayApiMsg && (
+          <span>
+            <FormatApiMsg
+              msgType={record._displayApiMsg}
+              requestPath={record?.request?.url}
+            />
+            <CopyIcon text={record._displayApiMsg} />
+          </span>
+        )}
+      </div>
+    ),
+    [record],
+  )
+
+  const tabItems = useMemo(
+    () => [
+      {
+        children: (
+          <DrawerContentWrapper>
+            <RequestHeaders record={record} />
+          </DrawerContentWrapper>
+        ),
+        key: '1',
+        label: '请求头',
+      },
+      {
+        children: (
+          <DrawerContentWrapper>
+            <RequestPayload
+              apiReply={apiReply}
+              displayData={displayData}
+              record={record}
+              theme={theme}
+            />
+          </DrawerContentWrapper>
+        ),
+        key: '2',
+        label: '载荷',
+      },
+      {
+        children: (
+          <DrawerContentWrapper>
+            <RequestResponse
+              loading={contentLoading}
+              responseContent={rawContent}
+              theme={theme}
+            />
+          </DrawerContentWrapper>
+        ),
+        key: '3',
+        label: '响应',
+      },
+      {
+        children: (
+          <DrawerContentWrapper>
+            <FormattedResponse
+              apiReply={apiReply}
+              displayData={displayData}
+              requestPath={record?.request?.url}
+              theme={theme}
+            />
+          </DrawerContentWrapper>
+        ),
+        key: '4',
+        label: '格式化响应',
+      },
+    ],
+    [apiReply, contentLoading, displayData, rawContent, record, theme],
+  )
+
   return (
     <Drawer
       title={<span style={{ fontSize: 12 }}>{title}</span>}
       open={drawerOpen}
-      onClose={() => onClose()}
-      width="min(500px, 100vw)"
+      onClose={onClose}
+      size={effectiveDrawerSize}
       placement="right"
+      resizable={{ onResize: handleResize }}
       mask={false}
       headerStyle={{
-        padding: '8px',
         fontSize: '14px',
+        padding: '8px',
         wordBreak: 'break-all',
       }}
       bodyStyle={{ padding: '0px 10px 10px 10px' }}
@@ -167,80 +288,19 @@ export default (props: RequestDrawerProps) => {
       <Tabs
         className="compact-tabs"
         activeKey={activeTab}
-        onChange={key => {
-          setActiveTab(key);
-          localStorage.setItem('uNetworkActiveTab', key);
-        }}
+        onChange={handleTabChange}
         size="small"
         tabBarExtraContent={{
           right: (
             <FilterOutlined
               className="ajax-tools-devtools-text-btn"
               title="添加到拦截列表"
-              onClick={() => {
-                // 将 apiReply 和原始响应内容附加到 record
-                const enhancedRecord = {
-                  ...record,
-                  _apiReply: apiReply,
-                  _rawContent: rawContent, // 传递原始响应内容
-                };
-                onAddInterceptorClick(enhancedRecord);
-              }}
+              onClick={handleAddToInterceptor}
             />
           ),
         }}
-        items={[
-          {
-            label: `请求头`,
-            key: '1',
-            children: (
-              <Wrapper>
-                <RequestHeaders record={record} />
-              </Wrapper>
-            ),
-          },
-          {
-            label: `载荷`,
-            key: '2',
-            children: (
-              <Wrapper>
-                <RequestPayload
-                  record={record}
-                  theme={theme}
-                  apiReply={apiReply}
-                  displayData={displayData}
-                />
-              </Wrapper>
-            ),
-          },
-          {
-            label: `响应`,
-            key: '3',
-            children: (
-              <Wrapper>
-                <RequestResponse
-                  record={record}
-                  drawerOpen={drawerOpen}
-                  theme={theme}
-                />
-              </Wrapper>
-            ),
-          },
-          {
-            label: `格式化响应`,
-            key: '4',
-            children: (
-              <Wrapper>
-                <FormattedResponse
-                  apiReply={apiReply}
-                  displayData={displayData}
-                  theme={theme}
-                />
-              </Wrapper>
-            ),
-          },
-        ]}
+        items={tabItems}
       />
     </Drawer>
-  );
-};
+  )
+}

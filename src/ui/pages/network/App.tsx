@@ -89,6 +89,30 @@ interface InterceptorRuleLookup {
   payload: Set<string>
 }
 
+interface ParsedResponsePayload {
+  apiReply: string
+  internalId: string
+  rawContent: string
+}
+
+function applyParsedResponse<T extends {
+  _apiReply?: string
+  _rawContent?: string
+}>(record: T, payload: ParsedResponsePayload): T {
+  if (
+    record._apiReply === payload.apiReply
+    && record._rawContent === payload.rawContent
+  ) {
+    return record
+  }
+
+  return {
+    ...record,
+    _apiReply: payload.apiReply,
+    _rawContent: payload.rawContent,
+  }
+}
+
 function SelectGroupContent({
   ajaxDataList,
   onChange,
@@ -986,6 +1010,31 @@ export default function App() {
     setSelectedRecordId(record._internalId)
   }, [])
 
+  const mergeParsedResponseIntoNetwork = useCallback(
+    (payload: ParsedResponsePayload) => {
+      setUNetwork((prev) => {
+        let changed = false
+        const next = prev.map((record) => {
+          if (record._internalId !== payload.internalId) {
+            return record
+          }
+
+          const mergedRecord = applyParsedResponse(record, payload)
+          changed = changed || mergedRecord !== record
+          return mergedRecord
+        })
+
+        return changed ? next : prev
+      })
+      setCurrRecord(prev =>
+        prev && prev._internalId === payload.internalId
+          ? applyParsedResponse(prev, payload)
+          : prev,
+      )
+    },
+    [],
+  )
+
   const filterRegExp = useMemo(() => strToRegExp(filterKey), [filterKey])
   const apiMsgFilterRegExp = useMemo(
     () => strToRegExp(apiMsgFilterKey),
@@ -1155,6 +1204,7 @@ export default function App() {
               drawerOpen={drawerOpen}
               onAddInterceptorClick={onAddInterceptorClick}
               onClose={() => setDrawerOpen(false)}
+              onParsedResponse={mergeParsedResponseIntoNetwork}
               theme={theme}
             />
           </React.Suspense>

@@ -21,6 +21,11 @@ interface RequestDrawerProps {
   record: any
   onClose: () => void
   onAddInterceptorClick: (record: any) => void
+  onParsedResponse?: (payload: {
+    apiReply: string
+    internalId: string
+    rawContent: string
+  }) => void
   theme?: 'light' | 'dark'
 }
 
@@ -90,7 +95,14 @@ function DrawerContentWrapper(props: { children: React.ReactNode }) {
 }
 
 export default function RequestDrawer(props: RequestDrawerProps) {
-  const { drawerOpen, record, onClose, onAddInterceptorClick, theme } = props
+  const {
+    drawerOpen,
+    record,
+    onClose,
+    onAddInterceptorClick,
+    onParsedResponse,
+    theme,
+  } = props
 
   const [activeTab, setActiveTab] = useState(
     localStorage.getItem('uNetworkActiveTab') || '2',
@@ -135,13 +147,18 @@ export default function RequestDrawer(props: RequestDrawerProps) {
       const nextRawContent = content || ''
       const parsedResponse = parseDrawerApiResponse(record.request.url, nextRawContent)
 
-      record._rawContent = nextRawContent
-      record._apiReply = parsedResponse.apiReply
-
       setRawContent(nextRawContent)
       setDisplayData(parsedResponse.displayData)
       setApiReply(parsedResponse.apiReply)
       setContentLoading(false)
+
+      if (record._internalId) {
+        onParsedResponse?.({
+          apiReply: parsedResponse.apiReply,
+          internalId: record._internalId,
+          rawContent: nextRawContent,
+        })
+      }
     }
 
     setRawContent('')
@@ -168,7 +185,7 @@ export default function RequestDrawer(props: RequestDrawerProps) {
     return () => {
       active = false
     }
-  }, [drawerOpen, record])
+  }, [drawerOpen, onParsedResponse, record])
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key)
@@ -287,6 +304,7 @@ export default function RequestDrawer(props: RequestDrawerProps) {
     >
       <Tabs
         className="compact-tabs"
+        destroyOnHidden
         activeKey={activeTab}
         onChange={handleTabChange}
         size="small"

@@ -8,7 +8,7 @@ import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 // @ts-ignore
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import * as React from 'react'
-import { useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 // import cssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
 // import htmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
 // editor.all中可查看完整的
@@ -69,6 +69,7 @@ function MonacoEditor(
   const editorRef = useRef<HTMLDivElement | null>(null)
   const editorInstanceRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const changeDisposableRef = useRef<monaco.IDisposable | null>(null)
+  const formatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const resizeFrameRef = useRef<number | null>(null)
   useImperativeHandle(ref, () => ({
     editorInstance: editorInstanceRef.current,
@@ -89,10 +90,12 @@ function MonacoEditor(
   const [editor, setEditor] = useState<any>(null)
   const [language, setLanguage] = useState<string>(props.language || 'json')
 
-  function formatDocumentAction() {
-    if (editor)
-      editor.getAction('editor.action.formatDocument').run()
-  }
+  const formatDocumentAction = useCallback(() => {
+    const formatAction = editor?.getAction('editor.action.formatDocument')
+    if (formatAction) {
+      void formatAction.run()
+    }
+  }, [editor])
 
   useEffect(() => {
     if (!editor && editorRef.current) {
@@ -142,6 +145,11 @@ function MonacoEditor(
         changeDisposableRef.current?.dispose()
         changeDisposableRef.current = null
 
+        if (formatTimerRef.current !== null) {
+          clearTimeout(formatTimerRef.current)
+          formatTimerRef.current = null
+        }
+
         if (resizeFrameRef.current !== null) {
           cancelAnimationFrame(resizeFrameRef.current)
           resizeFrameRef.current = null
@@ -172,21 +180,38 @@ function MonacoEditor(
   }, [editor, onDidChangeContent])
 
   useEffect(() => {
-    if (editor) {
-      const model = editor.getModel()
-      if (!model)
-        return
+    if (!editor) {
+      return
+    }
 
-      if (model.getValue() !== (props.text || '')) {
-        model.setValue(props.text || '')
-      }
-      const timer = setTimeout(() => {
-        clearTimeout(timer)
+    const model = editor.getModel()
+    if (!model)
+      return
+
+    if (model.getValue() !== (props.text || '')) {
+      model.setValue(props.text || '')
+    }
+
+    if (formatTimerRef.current !== null) {
+      clearTimeout(formatTimerRef.current)
+      formatTimerRef.current = null
+    }
+
+    if (!readOnly) {
+      formatTimerRef.current = setTimeout(() => {
+        formatTimerRef.current = null
         // 格式化代码
         formatDocumentAction()
       }, 300)
     }
-  }, [editor, props.text])
+
+    return () => {
+      if (formatTimerRef.current !== null) {
+        clearTimeout(formatTimerRef.current)
+        formatTimerRef.current = null
+      }
+    }
+  }, [editor, formatDocumentAction, props.text, readOnly])
 
   // 监听 theme 变化，动态切换主题
   useEffect(() => {

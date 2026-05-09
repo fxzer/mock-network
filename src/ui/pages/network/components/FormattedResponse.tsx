@@ -1,6 +1,6 @@
 import * as React from 'react'
 import FormatApiMsg from '../../../components/FormatApiMsg'
-import MonacoEditor from '../../../components/MonacoEditor'
+import LazyMonacoEditor from '../../../components/LazyMonacoEditor'
 import { formatDisplayContent, getEditorTheme } from '../utils'
 import CopyIcon from './CopyIcon'
 
@@ -44,7 +44,7 @@ export default function FormattedResponse({
 
       {displayData && typeof displayData === 'object'
         ? (
-            <MonacoEditor
+            <LazyMonacoEditor
               language="json"
               text={formattedText}
               theme={getEditorTheme(theme)}

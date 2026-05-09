@@ -1,6 +1,6 @@
 import { Spin } from 'antd'
 import * as React from 'react'
-import MonacoEditor from '../../../components/MonacoEditor'
+import LazyMonacoEditor from '../../../components/LazyMonacoEditor'
 import {
   formatJsonLikeText,
   getEditorTheme,
@@ -27,7 +27,7 @@ export default function RequestResponse({
 
   if (parsedResponse && typeof parsedResponse === 'object') {
     return (
-      <MonacoEditor
+      <LazyMonacoEditor
         language="json"
         text={JSON.stringify(parsedResponse, null, 2)}
         theme={getEditorTheme(theme)}

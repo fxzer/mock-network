@@ -1,6 +1,6 @@
 import { Divider } from 'antd'
 import * as React from 'react'
-import MonacoEditor from '../../../components/MonacoEditor'
+import LazyMonacoEditor from '../../../components/LazyMonacoEditor'
 import {
   formatDisplayContent,
   formatJsonLikeText,
@@ -15,8 +15,9 @@ function KeyValueList({
 }: {
   entries: Array<{ name: string, value: string }>
 }) {
-  return entries.map(entry => (
-    <div className="ajax-tools-devtools-text" key={entry.name}>
+  /* eslint-disable react/no-array-index-key -- 同名 header 可能多条，需序号区分 */
+  const items = entries.map((entry, index) => (
+    <div className="ajax-tools-devtools-text" key={`${entry.name}-${index}`}>
       <strong>
         {entry.name}
         :&nbsp;
@@ -24,6 +25,9 @@ function KeyValueList({
       <span>{entry.value}</span>
     </div>
   ))
+  /* eslint-enable react/no-array-index-key */
+
+  return items
 }
 
 export default function RequestPayload({
@@ -92,7 +96,7 @@ export default function RequestPayload({
       <div style={{ marginTop: 8 }}>
         {parsedPayload && typeof parsedPayload === 'object'
           ? (
-              <MonacoEditor
+              <LazyMonacoEditor
                 language="json"
                 text={JSON.stringify(parsedPayload, null, 2)}
                 theme={getEditorTheme(theme)}

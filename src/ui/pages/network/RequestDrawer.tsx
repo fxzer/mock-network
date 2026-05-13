@@ -8,7 +8,10 @@ import FormattedResponse from './components/FormattedResponse'
 import RequestHeaders from './components/RequestHeaders'
 import RequestPayload from './components/RequestPayload'
 import RequestResponse from './components/RequestResponse'
-import { parseDrawerApiResponse } from './utils'
+import {
+  buildInterceptorResponseContent,
+  parseDrawerApiResponse,
+} from './utils'
 import './RequestDrawer.css'
 
 const DRAWER_SIZE_STORAGE_KEY = 'uNetworkDrawerSize'
@@ -18,12 +21,14 @@ const DRAWER_VIEWPORT_PADDING = 24
 
 interface RequestDrawerProps {
   drawerOpen: boolean
+  matchedInterceptorRule?: any
   record: any
   onClose: () => void
   onAddInterceptorClick: (record: any) => void
   onParsedResponse?: (payload: {
     apiReply: string
     internalId: string
+    originalRawContent?: string
     rawContent: string
   }) => void
   theme?: 'light' | 'dark'
@@ -97,6 +102,7 @@ function DrawerContentWrapper(props: { children: React.ReactNode }) {
 export default function RequestDrawer(props: RequestDrawerProps) {
   const {
     drawerOpen,
+    matchedInterceptorRule,
     record,
     onClose,
     onAddInterceptorClick,
@@ -144,7 +150,12 @@ export default function RequestDrawer(props: RequestDrawerProps) {
         return
       }
 
-      const nextRawContent = content || ''
+      const originalRawContent = content || ''
+      const nextRawContent = buildInterceptorResponseContent({
+        originalContent: originalRawContent,
+        record,
+        rule: matchedInterceptorRule,
+      })
       const parsedResponse = parseDrawerApiResponse(record.request.url, nextRawContent)
 
       setRawContent(nextRawContent)
@@ -156,6 +167,7 @@ export default function RequestDrawer(props: RequestDrawerProps) {
         onParsedResponse?.({
           apiReply: parsedResponse.apiReply,
           internalId: record._internalId,
+          originalRawContent,
           rawContent: nextRawContent,
         })
       }
@@ -165,7 +177,14 @@ export default function RequestDrawer(props: RequestDrawerProps) {
     setDisplayData(null)
     setApiReply('')
 
-    if (typeof record._rawContent === 'string') {
+    if (typeof record._originalRawContent === 'string') {
+      applyContent(record._originalRawContent)
+      return () => {
+        active = false
+      }
+    }
+
+    if (!matchedInterceptorRule && typeof record._rawContent === 'string') {
       applyContent(record._rawContent)
       return () => {
         active = false
@@ -185,7 +204,7 @@ export default function RequestDrawer(props: RequestDrawerProps) {
     return () => {
       active = false
     }
-  }, [drawerOpen, onParsedResponse, record])
+  }, [drawerOpen, matchedInterceptorRule, onParsedResponse, record])
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key)

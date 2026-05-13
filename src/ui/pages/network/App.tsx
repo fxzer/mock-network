@@ -5,6 +5,7 @@ import type {
 import {
   FilterOutlined,
   PauseCircleOutlined,
+  PicLeftOutlined,
   PlayCircleOutlined,
   StopOutlined,
 } from '@ant-design/icons'
@@ -29,6 +30,7 @@ import {
   isSysxcpApi,
   parseRequestDisplayData,
 } from '../../utils'
+import { findMatchedInterceptorRule } from './utils'
 import './App.css'
 
 const RequestDrawer = React.lazy(() => import('./RequestDrawer'))
@@ -60,6 +62,7 @@ interface NetworkRecord {
   _lookupPath?: string
   _normalized?: boolean
   _rawContent?: string
+  _originalRawContent?: string
   _resourceType?: string
   _apiReply?: string
   getContent?: (callback: (content: string) => void) => void
@@ -84,23 +87,21 @@ interface NetworkRecord {
   startedDateTime?: string
 }
 
-interface InterceptorRuleLookup {
-  normal: Set<string>
-  payload: Set<string>
-}
-
 interface ParsedResponsePayload {
   apiReply: string
   internalId: string
+  originalRawContent?: string
   rawContent: string
 }
 
 function applyParsedResponse<T extends {
+  _originalRawContent?: string
   _apiReply?: string
   _rawContent?: string
 }>(record: T, payload: ParsedResponsePayload): T {
   if (
     record._apiReply === payload.apiReply
+    && record._originalRawContent === payload.originalRawContent
     && record._rawContent === payload.rawContent
   ) {
     return record
@@ -109,6 +110,7 @@ function applyParsedResponse<T extends {
   return {
     ...record,
     _apiReply: payload.apiReply,
+    _originalRawContent: payload.originalRawContent,
     _rawContent: payload.rawContent,
   }
 }
@@ -286,18 +288,10 @@ function normalizeNetworkRecord(record: any): NetworkRecord | null {
 
 function isRecordIntercepted(
   record: NetworkRecord,
-  ruleLookup: InterceptorRuleLookup,
   ajaxToolsSwitchOn: boolean,
+  interceptorRules: any[],
 ) {
-  if (!ajaxToolsSwitchOn) {
-    return false
-  }
-
-  return (
-    (!!record._lookupOperation
-      && ruleLookup.payload.has(record._lookupOperation))
-    || (!!record._lookupPath && ruleLookup.normal.has(record._lookupPath))
-  )
+  return !!findMatchedInterceptorRule(record, interceptorRules, ajaxToolsSwitchOn)
 }
 
 function getStatusTextColor(status: number | string | undefined) {
@@ -322,7 +316,7 @@ function getColumns({
   ajaxToolsSwitchOn,
   columnWidths,
   handleResize,
-  interceptorRuleLookup,
+  interceptorRules,
   onAddInterceptorClick,
   onRequestUrlClick,
 }: {
@@ -331,7 +325,7 @@ function getColumns({
   handleResize: (
     columnKey: string,
   ) => (event: React.SyntheticEvent, payload: { size: { width: number } }) => void
-  interceptorRuleLookup: InterceptorRuleLookup
+  interceptorRules: any[]
   onAddInterceptorClick: (record: NetworkRecord) => void
   onRequestUrlClick: (record: NetworkRecord) => void
 }) {
@@ -345,8 +339,8 @@ function getColumns({
       render: (_: any, record: NetworkRecord, index: number) => {
         const intercepted = isRecordIntercepted(
           record,
-          interceptorRuleLookup,
           ajaxToolsSwitchOn,
+          interceptorRules,
         )
 
         return (
@@ -738,6 +732,31 @@ export default function App() {
     }
   }, [])
 
+  const handleOpenInterceptorPanel = useCallback(() => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tabId = tabs[0]?.id
+      if (!tabId) {
+        return
+      }
+
+      chrome.tabs.sendMessage(
+        tabId,
+        { type: 'iframeToggle', iframeVisible: true },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            return
+          }
+
+          if (response) {
+            chrome.storage.local.set({
+              iframeVisible: response.nextIframeVisible,
+            })
+          }
+        },
+      )
+    })
+  }, [])
+
   const showSidePage = useCallback((iframeVisible: undefined | boolean) => {
     if (!iframeVisible) {
       return
@@ -1052,25 +1071,17 @@ export default function App() {
     [apiMsgFilterRegExp, filterRegExp, uNetwork],
   )
 
-  const interceptorRuleLookup = useMemo<InterceptorRuleLookup>(() => {
-    const normal = new Set<string>()
-    const payload = new Set<string>()
-
-    interceptorRules.forEach((rule) => {
-      if (!rule?.request) {
-        return
-      }
-
-      if (rule.matchType === 'payload') {
-        payload.add(rule.request)
-        return
-      }
-
-      normal.add(rule.request)
-    })
-
-    return { normal, payload }
-  }, [interceptorRules])
+  const currRecordInterceptorRule = useMemo(
+    () =>
+      currRecord
+        ? findMatchedInterceptorRule(
+            currRecord,
+            interceptorRules,
+            ajaxToolsSwitchOn,
+          )
+        : null,
+    [ajaxToolsSwitchOn, currRecord, interceptorRules],
+  )
 
   const columns = useMemo(
     () =>
@@ -1078,7 +1089,7 @@ export default function App() {
         ajaxToolsSwitchOn,
         columnWidths,
         handleResize,
-        interceptorRuleLookup,
+        interceptorRules,
         onAddInterceptorClick,
         onRequestUrlClick,
       }),
@@ -1086,7 +1097,7 @@ export default function App() {
       ajaxToolsSwitchOn,
       columnWidths,
       handleResize,
-      interceptorRuleLookup,
+      interceptorRules,
       onAddInterceptorClick,
       onRequestUrlClick,
     ],
@@ -1112,40 +1123,49 @@ export default function App() {
       >
         {contextHolder}
         <div ref={toolbarRef} className="ajax-tools-devtools-action-bar">
+          <div className="ajax-tools-devtools-action-bar__main">
+            <Button
+              type="text"
+              shape="circle"
+              danger={recording}
+              title={recording ? '停止录制' : '录制请求'}
+              icon={
+                recording
+                  ? <PauseCircleOutlined style={{ color: '#f7534a' }} />
+                  : <PlayCircleOutlined style={{ color: '#1890ff' }} />
+              }
+              onClick={() => handleRecordingChange(!recording)}
+            />
+            <Button
+              type="text"
+              shape="circle"
+              title="清空"
+              icon={<StopOutlined />}
+              onClick={handleClear}
+            />
+            <Input
+              allowClear
+              placeholder="Path 过滤（正则）"
+              size="small"
+              style={{ borderRadius: '999px', marginLeft: 16, width: 160 }}
+              value={filterKey}
+              onChange={event => setFilterKey(event.target.value)}
+            />
+            <Input
+              allowClear
+              placeholder="ApiMsg 过滤（正则）"
+              size="small"
+              style={{ borderRadius: '999px', marginLeft: 8, width: 180 }}
+              value={apiMsgFilterKey}
+              onChange={event => setApiMsgFilterKey(event.target.value)}
+            />
+          </div>
           <Button
             type="text"
             shape="circle"
-            danger={recording}
-            title={recording ? '停止录制' : '录制请求'}
-            icon={
-              recording
-                ? <PauseCircleOutlined style={{ color: '#f7534a' }} />
-                : <PlayCircleOutlined style={{ color: '#1890ff' }} />
-            }
-            onClick={() => handleRecordingChange(!recording)}
-          />
-          <Button
-            type="text"
-            shape="circle"
-            title="清空"
-            icon={<StopOutlined />}
-            onClick={handleClear}
-          />
-          <Input
-            allowClear
-            placeholder="Path 过滤（正则）"
-            size="small"
-            style={{ borderRadius: '999px', marginLeft: 16, width: 160 }}
-            value={filterKey}
-            onChange={event => setFilterKey(event.target.value)}
-          />
-          <Input
-            allowClear
-            placeholder="ApiMsg 过滤（正则）"
-            size="small"
-            style={{ borderRadius: '999px', marginLeft: 8, width: 180 }}
-            value={apiMsgFilterKey}
-            onChange={event => setApiMsgFilterKey(event.target.value)}
+            title="打开拦截面板"
+            icon={<PicLeftOutlined />}
+            onClick={handleOpenInterceptorPanel}
           />
         </div>
 
@@ -1202,6 +1222,7 @@ export default function App() {
             <RequestDrawer
               record={currRecord}
               drawerOpen={drawerOpen}
+              matchedInterceptorRule={currRecordInterceptorRule}
               onAddInterceptorClick={onAddInterceptorClick}
               onClose={() => setDrawerOpen(false)}
               onParsedResponse={mergeParsedResponseIntoNetwork}

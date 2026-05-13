@@ -21,10 +21,18 @@
 
 .ajax-tools-devtools-action-bar {
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   display: flex;
   padding: 2px 12px;
   background: #f5f7f9;
   border-bottom: 1px solid #f0f0f0;
+  flex: none;
+}
+
+.ajax-tools-devtools-action-bar__main {
+  align-items: center;
+  display: flex;
   flex: none;
 }
 

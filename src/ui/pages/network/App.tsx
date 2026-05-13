@@ -37,7 +37,9 @@ const RequestDrawer = React.lazy(() => import('./RequestDrawer'))
 
 const MAX_NETWORK_ROWS = 2000
 const TABLE_MIN_SCROLL_Y = 240
-const TABLE_VIRTUAL_THRESHOLD = 200
+const REQUEST_FLUSH_DELAY = 16
+const BRIDGE_INIT_RETRY_DELAY = 120
+const MAX_BRIDGE_INIT_RETRIES = 10
 
 interface AddInterceptorParams {
   ajaxDataList: AjaxDataListObject[]
@@ -207,6 +209,53 @@ function getRequestLookupPath(url: string) {
   return url.split('?')[0].match('(?<=//.*/).+')?.[0] || ''
 }
 
+function buildRequestIdentitySource(record: any) {
+  return [
+    record?.startedDateTime || '',
+    record?.request?.method || '',
+    record?.request?.url || '',
+    record?.response?.status ?? '',
+    record?.request?.postData?.text || '',
+  ].join('||')
+}
+
+function hashString(value: string) {
+  let hash = 0
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+
+  return hash.toString(36)
+}
+
+function getStableRequestId(record: any) {
+  const identitySource = buildRequestIdentitySource(record)
+  return identitySource ? `req_${hashString(identitySource)}` : `req_${Date.now()}`
+}
+
+function trimAndDedupeRecords(records: NetworkRecord[]) {
+  const result: NetworkRecord[] = []
+  const seenIds = new Set<string>()
+
+  for (let index = records.length - 1; index >= 0; index -= 1) {
+    const record = records[index]
+
+    if (!record?._internalId || seenIds.has(record._internalId)) {
+      continue
+    }
+
+    seenIds.add(record._internalId)
+    result.push(record)
+
+    if (result.length >= MAX_NETWORK_ROWS) {
+      break
+    }
+  }
+
+  return result.reverse()
+}
+
 function toNameValueEntries(entries: any): NameValueEntry[] {
   if (!Array.isArray(entries)) {
     return []
@@ -216,6 +265,41 @@ function toNameValueEntries(entries: any): NameValueEntry[] {
     name: entry?.name || '',
     value: entry?.value || '',
   }))
+}
+
+function getHeaderValue(headers: NameValueEntry[], targetName: string) {
+  const normalizedName = String(targetName || '').toLowerCase()
+  const matchedHeader = headers.find(
+    header => String(header.name || '').toLowerCase() === normalizedName,
+  )
+
+  return matchedHeader?.value || ''
+}
+
+function inferResourceType(record: any) {
+  if (['fetch', 'xhr'].includes(record?._resourceType)) {
+    return record._resourceType
+  }
+
+  const requestHeaders = toNameValueEntries(record?.request?.headers)
+  const responseHeaders = toNameValueEntries(record?.response?.headers)
+  const contentType = String(
+    record?.response?.content?.mimeType
+    || getHeaderValue(responseHeaders, 'content-type')
+    || '',
+  ).toLowerCase()
+  const acceptHeader = String(
+    getHeaderValue(requestHeaders, 'accept') || '',
+  ).toLowerCase()
+  const requestUrl = String(record?.request?.url || '')
+  const hasPayload = !!record?.request?.postData?.text
+  const looksLikeApiRequest
+    = /\/api\/|graphql|rpc/i.test(requestUrl)
+      || hasPayload
+      || contentType.includes('json')
+      || acceptHeader.includes('json')
+
+  return looksLikeApiRequest ? 'fetch' : ''
 }
 
 function getChromeLocalStorage(keys: string | string[]) {
@@ -232,7 +316,9 @@ function getChromeLocalStorage(keys: string | string[]) {
 }
 
 function normalizeNetworkRecord(record: any): NetworkRecord | null {
-  if (!record?.request || !['fetch', 'xhr'].includes(record._resourceType)) {
+  const resourceType = inferResourceType(record)
+
+  if (!record?.request || !resourceType) {
     return null
   }
 
@@ -250,14 +336,12 @@ function normalizeNetworkRecord(record: any): NetworkRecord | null {
     _displayApiMsg: displayApiMsg,
     _displayFormattedPath: displayFormattedPath,
     _displayPath: displayPath,
-    _internalId:
-      record._internalId
-      || `${record.startedDateTime || Date.now()}-${Math.random().toString(36).slice(2)}`,
+    _internalId: record._internalId || getStableRequestId(record),
     _lookupOperation:
       record._lookupOperation || extractApiOperation(displayApiMsg || ''),
     _lookupPath: record._lookupPath || getRequestLookupPath(url),
     _normalized: true,
-    _resourceType: record._resourceType,
+    _resourceType: resourceType,
     getContent:
       typeof record.getContent === 'function'
         ? record.getContent.bind(record)
@@ -495,7 +579,8 @@ export default function App() {
   const panelRef = useRef<HTMLDivElement | null>(null)
   const toolbarRef = useRef<HTMLDivElement | null>(null)
   const pendingRequestsRef = useRef<any[]>([])
-  const flushFrameRef = useRef<number | null>(null)
+  const deferredTimeoutsRef = useRef<number[]>([])
+  const flushTimerRef = useRef<number | null>(null)
 
   const [recording, setRecording] = useState(true)
   const [uNetwork, setUNetwork] = useState<NetworkRecord[]>([])
@@ -511,7 +596,6 @@ export default function App() {
   const [interceptorRules, setInterceptorRules] = useState<any[]>([])
   const [ajaxToolsSwitchOn, setAjaxToolsSwitchOn] = useState(true)
   const [tableScrollY, setTableScrollY] = useState(TABLE_MIN_SCROLL_Y)
-  const [viewportReady, setViewportReady] = useState(false)
   const [columnWidths, setColumnWidths] = useState({
     Path: 120,
     apiMsg: 250,
@@ -556,6 +640,18 @@ export default function App() {
     [],
   )
 
+  const scheduleDeferredTask = useCallback((callback: () => void, delay = 0) => {
+    const timerId = window.setTimeout(() => {
+      deferredTimeoutsRef.current = deferredTimeoutsRef.current.filter(
+        id => id !== timerId,
+      )
+      callback()
+    }, delay)
+
+    deferredTimeoutsRef.current.push(timerId)
+    return timerId
+  }, [])
+
   const updateTableViewport = useCallback(() => {
     const panelHeight
       = panelRef.current?.getBoundingClientRect().height
@@ -569,14 +665,13 @@ export default function App() {
       TABLE_MIN_SCROLL_Y,
     )
 
-    setViewportReady(panelHeight > 0)
     setTableScrollY(prev => (prev === nextScrollY ? prev : nextScrollY))
   }, [])
 
   useEffect(() => {
     const syncViewport = () => {
       updateTableViewport()
-      window.requestAnimationFrame(updateTableViewport)
+      scheduleDeferredTask(updateTableViewport)
     }
 
     syncViewport()
@@ -604,10 +699,10 @@ export default function App() {
       window.removeEventListener('m-network-panel-shown', syncViewport)
       document.removeEventListener('visibilitychange', syncViewport)
     }
-  }, [updateTableViewport])
+  }, [scheduleDeferredTask, updateTableViewport])
 
   const flushPendingRequests = useCallback(() => {
-    flushFrameRef.current = null
+    flushTimerRef.current = null
 
     if (pendingRequestsRef.current.length === 0) {
       return
@@ -623,25 +718,30 @@ export default function App() {
     }
 
     setUNetwork((prev) => {
-      const next = [...prev, ...normalizedRequests].slice(-MAX_NETWORK_ROWS)
-      return next
+      return trimAndDedupeRecords([...prev, ...normalizedRequests])
     })
   }, [])
 
   const scheduleFlushPendingRequests = useCallback(() => {
-    if (flushFrameRef.current !== null) {
+    if (flushTimerRef.current !== null) {
       return
     }
 
-    flushFrameRef.current = window.requestAnimationFrame(flushPendingRequests)
+    flushTimerRef.current = window.setTimeout(
+      flushPendingRequests,
+      REQUEST_FLUSH_DELAY,
+    )
   }, [flushPendingRequests])
 
   useEffect(() => {
+    let bridgeRetryTimer: number | null = null
+    let bridgeRetryCount = 0
+
     const initializeFromBridge = () => {
       const bridge = (window as any).bridge
 
       if (!bridge) {
-        return
+        return false
       }
 
       setRecording(bridge.getRecordingState())
@@ -651,9 +751,40 @@ export default function App() {
         .map(normalizeNetworkRecord)
         .filter(Boolean) as NetworkRecord[]
 
-      setUNetwork(normalizedBuffer.slice(-MAX_NETWORK_ROWS))
+      setUNetwork(trimAndDedupeRecords(normalizedBuffer))
       updateTableViewport()
-      window.requestAnimationFrame(updateTableViewport)
+      scheduleDeferredTask(updateTableViewport)
+      return true
+    }
+
+    const retryInitializeFromBridge = () => {
+      const initialized = initializeFromBridge()
+
+      if (initialized) {
+        bridgeRetryCount = 0
+        bridgeRetryTimer = null
+        return
+      }
+
+      if (bridgeRetryCount >= MAX_BRIDGE_INIT_RETRIES) {
+        bridgeRetryTimer = null
+        return
+      }
+
+      bridgeRetryCount += 1
+      bridgeRetryTimer = window.setTimeout(
+        retryInitializeFromBridge,
+        BRIDGE_INIT_RETRY_DELAY,
+      )
+    }
+
+    const handleBridgeReady = () => {
+      if (bridgeRetryTimer !== null) {
+        window.clearTimeout(bridgeRetryTimer)
+        bridgeRetryTimer = null
+      }
+
+      retryInitializeFromBridge()
     }
 
     ;(window as any).initializeFromBridge = initializeFromBridge
@@ -666,7 +797,8 @@ export default function App() {
       scheduleFlushPendingRequests()
     }
 
-    initializeFromBridge()
+    window.addEventListener('m-network-bridge-ready', handleBridgeReady)
+    handleBridgeReady()
 
     getChromeLocalStorage(['ajaxDataList', 'ajaxToolsSwitchOn']).then((result) => {
       const list = result.ajaxDataList || []
@@ -699,17 +831,30 @@ export default function App() {
     chrome.storage.onChanged.addListener(handleStorageChange)
 
     return () => {
-      if (flushFrameRef.current !== null) {
-        cancelAnimationFrame(flushFrameRef.current)
-        flushFrameRef.current = null
+      if (flushTimerRef.current !== null) {
+        window.clearTimeout(flushTimerRef.current)
+        flushTimerRef.current = null
       }
 
+      if (bridgeRetryTimer !== null) {
+        window.clearTimeout(bridgeRetryTimer)
+        bridgeRetryTimer = null
+      }
+
+      deferredTimeoutsRef.current.forEach(id => window.clearTimeout(id))
+      deferredTimeoutsRef.current = []
       pendingRequestsRef.current.length = 0
       delete (window as any).syncNetworkData
       delete (window as any).initializeFromBridge
+      window.removeEventListener('m-network-bridge-ready', handleBridgeReady)
       chrome.storage.onChanged.removeListener(handleStorageChange)
     }
-  }, [scheduleFlushPendingRequests, updateTableViewport, flushPendingRequests])
+  }, [
+    scheduleDeferredTask,
+    scheduleFlushPendingRequests,
+    updateTableViewport,
+    flushPendingRequests,
+  ])
 
   const handleRecordingChange = useCallback((nextRecording: boolean) => {
     setRecording(nextRecording)
@@ -1103,9 +1248,6 @@ export default function App() {
     ],
   )
 
-  const shouldUseVirtual
-    = viewportReady && filteredData.length >= TABLE_VIRTUAL_THRESHOLD
-
   const { darkAlgorithm, defaultAlgorithm } = antdTheme
 
   return (
@@ -1188,7 +1330,6 @@ export default function App() {
               y: tableScrollY,
             }}
             scrollToFirstRowOnChange={false}
-            virtual={shouldUseVirtual}
             rowClassName={(record: NetworkRecord) =>
               (selectedRecordId === record._internalId ? 'row-selected' : '')}
             onRow={(record: NetworkRecord) => ({

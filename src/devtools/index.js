@@ -1,11 +1,56 @@
 const requestBuffer = []
 const pendingSyncRequests = []
 const MAX_REQUEST_BUFFER = 2000
+const PANEL_SYNC_DELAY = 16
+const BRIDGE_READY_RETRY_DELAYS = [0, 80, 240]
 
 // 1. 每次打开开发者工具，默认记录状态为 true
 let isRecording = true
 let panelWindow = null
 let syncScheduled = false
+let syncTimerId = null
+
+function buildRequestIdentitySource(request) {
+  return [
+    request?.startedDateTime || '',
+    request?.request?.method || '',
+    request?.request?.url || '',
+    request?.response?.status ?? '',
+    request?.request?.postData?.text || '',
+  ].join('||')
+}
+
+function hashString(value) {
+  let hash = 0
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+  }
+
+  return hash.toString(36)
+}
+
+function getStableRequestId(request) {
+  const identitySource = buildRequestIdentitySource(request)
+  return identitySource ? `req_${hashString(identitySource)}` : `req_${Date.now()}`
+}
+
+function upsertRequestBuffer(serializedRequest) {
+  const existingIndex = requestBuffer.findIndex(
+    item => item._internalId === serializedRequest._internalId,
+  )
+
+  if (existingIndex >= 0) {
+    requestBuffer.splice(existingIndex, 1, serializedRequest)
+    return
+  }
+
+  if (requestBuffer.length >= MAX_REQUEST_BUFFER) {
+    requestBuffer.shift()
+  }
+
+  requestBuffer.push(serializedRequest)
+}
 
 function cloneNameValueEntries(entries) {
   if (!Array.isArray(entries)) {
@@ -85,6 +130,41 @@ function getRequestLookupPath(url) {
   return url.split('?')[0].match('(?<=//.*/).+')?.[0] || ''
 }
 
+function getHeaderValue(headers, targetName) {
+  const normalizedName = String(targetName || '').toLowerCase()
+  const matchedHeader = Array.isArray(headers)
+    ? headers.find(
+        header => String(header?.name || '').toLowerCase() === normalizedName,
+      )
+    : null
+
+  return matchedHeader?.value || ''
+}
+
+function inferResourceType(request) {
+  if (['fetch', 'xhr'].includes(request?._resourceType)) {
+    return request._resourceType
+  }
+
+  const contentType = String(
+    request?.response?.content?.mimeType
+    || getHeaderValue(request?.response?.headers, 'content-type')
+    || '',
+  ).toLowerCase()
+  const acceptHeader = String(
+    getHeaderValue(request?.request?.headers, 'accept') || '',
+  ).toLowerCase()
+  const requestUrl = String(request?.request?.url || '')
+  const hasPayload = !!request?.request?.postData?.text
+  const looksLikeApiRequest
+    = /\/api\/|graphql|rpc/i.test(requestUrl)
+      || hasPayload
+      || contentType.includes('json')
+      || acceptHeader.includes('json')
+
+  return looksLikeApiRequest ? 'fetch' : ''
+}
+
 function serializeRequest(request) {
   const requestUrl = request?.request?.url || ''
   const displayPath = getDisplayPath(requestUrl)
@@ -92,8 +172,8 @@ function serializeRequest(request) {
 
   return {
     _normalized: true,
-    _internalId: request?._internalId || `${request?.startedDateTime || Date.now()}-${Math.random().toString(36).slice(2)}`,
-    _resourceType: request?._resourceType || '',
+    _internalId: request?._internalId || getStableRequestId(request),
+    _resourceType: inferResourceType(request),
     _displayApiMsg: displayApiMsg,
     _displayPath: displayPath,
     _displayFormattedPath: formatDisplayPath(displayPath),
@@ -120,6 +200,22 @@ function serializeRequest(request) {
   }
 }
 
+function dispatchBridgeReady(targetWindow) {
+  if (!targetWindow) {
+    return
+  }
+
+  BRIDGE_READY_RETRY_DELAYS.forEach((delay) => {
+    window.setTimeout(() => {
+      if (panelWindow !== targetWindow) {
+        return
+      }
+
+      targetWindow.dispatchEvent(new Event('m-network-bridge-ready'))
+    }, delay)
+  })
+}
+
 function notifyPanelVisible(window) {
   if (!window) {
     return
@@ -136,8 +232,55 @@ function notifyPanelVisible(window) {
   }
 }
 
+function attachBridge(targetWindow) {
+  targetWindow.bridge = {
+    getBuffer: () => requestBuffer.slice(),
+    getRecordingState: () => isRecording,
+    setRecording: (state) => {
+      isRecording = state
+    },
+    clearBuffer: () => {
+      requestBuffer.length = 0
+      pendingSyncRequests.length = 0
+    },
+  }
+}
+
+function refreshPanelWindow(targetWindow) {
+  if (!targetWindow) {
+    return
+  }
+
+  attachBridge(targetWindow)
+
+  if (targetWindow.initializeFromBridge) {
+    targetWindow.initializeFromBridge()
+  }
+
+  dispatchBridgeReady(targetWindow)
+  notifyPanelVisible(targetWindow)
+}
+
+function getHarEntries() {
+  return new Promise((resolve) => {
+    chrome.devtools.network.getHAR((harLog) => {
+      resolve(Array.isArray(harLog?.entries) ? harLog.entries : [])
+    })
+  })
+}
+
+async function hydrateRequestBufferFromHar() {
+  const harEntries = await getHarEntries()
+
+  harEntries.forEach((entry) => {
+    const serializedRequest = serializeRequest(entry)
+    upsertRequestBuffer(serializedRequest)
+  })
+}
+
 function flushPendingSyncRequests() {
   syncScheduled = false
+  syncTimerId = null
 
   if (!panelWindow?.syncNetworkData) {
     pendingSyncRequests.length = 0
@@ -159,24 +302,14 @@ function schedulePanelSync(serializedRequest) {
   }
 
   syncScheduled = true
-
-  if (typeof panelWindow?.requestAnimationFrame === 'function') {
-    panelWindow.requestAnimationFrame(flushPendingSyncRequests)
-    return
-  }
-
-  window.setTimeout(flushPendingSyncRequests, 16)
+  syncTimerId = window.setTimeout(flushPendingSyncRequests, PANEL_SYNC_DELAY)
 }
 
 // 监听网络请求
 chrome.devtools.network.onRequestFinished.addListener(request => {
   if (isRecording) {
     const serializedRequest = serializeRequest(request)
-
-    if (requestBuffer.length >= MAX_REQUEST_BUFFER) {
-      requestBuffer.shift()
-    }
-    requestBuffer.push(serializedRequest)
+    upsertRequestBuffer(serializedRequest)
 
     // 如果面板已经打开，实时同步数据
     if (panelWindow && panelWindow.syncNetworkData) {
@@ -192,31 +325,29 @@ chrome.devtools.panels.create(
   function (panel) {
     console.log('M-Network 面板创建成功！')
 
-    panel.onShown.addListener(function (window) {
+    panel.onShown.addListener(async function (window) {
       panelWindow = window
+      refreshPanelWindow(window)
 
-      // 注入控制对象到 panel 的 window 对象中
-      window.bridge = {
-        getBuffer: () => requestBuffer.slice(),
-        getRecordingState: () => isRecording,
-        setRecording: state => {
-          isRecording = state
-        },
-        clearBuffer: () => {
-          requestBuffer.length = 0
-          pendingSyncRequests.length = 0
-        },
+      try {
+        await hydrateRequestBufferFromHar()
+        if (panelWindow === window) {
+          refreshPanelWindow(window)
+        }
       }
-
-      // 如果UI已经加载完成，手动触发初始化
-      if (window.initializeFromBridge) {
-        window.initializeFromBridge()
+      catch (error) {
+        console.error('Failed to hydrate requests from HAR', error)
       }
-
-      notifyPanelVisible(window)
     })
 
     panel.onHidden.addListener(function () {
+      if (syncTimerId !== null) {
+        window.clearTimeout(syncTimerId)
+        syncTimerId = null
+      }
+
+      syncScheduled = false
+      pendingSyncRequests.length = 0
       panelWindow = null
     })
   },

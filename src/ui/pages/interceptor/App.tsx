@@ -1,11 +1,15 @@
+import type { PendingInterceptorEditTarget } from '../../constants'
 import type { ModifyDataModalOnSaveProps } from './ModifyDataModal'
 import { DownloadOutlined, UploadOutlined } from '@ant-design/icons'
 import { Checkbox, ConfigProvider, Dropdown, Space, Switch, theme } from 'antd'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { OpenNewWindowIcon } from '../../components/Icons'
-
-import { defaultAjaxDataList, defaultInterface } from '../../constants'
+import {
+  defaultAjaxDataList,
+  defaultInterface,
+  PENDING_INTERCEPTOR_EDIT_TARGET_STORAGE_KEY,
+} from '../../constants'
 import { exportJSON } from './ExportJson'
 import { openImportJsonModal } from './ImportJson'
 import InterceptorPanel from './InterceptorPanel'
@@ -29,12 +33,15 @@ const colorMap = [
 function App() {
   const modifyDataModalRef = useRef<any>({})
   const ajaxDataListRef = useRef<any>(null) // 用于存储最新的 ajaxDataList，避免 storage 同步时循环更新
+  const lastHandledPendingEditTargetIdRef = useRef('')
 
   const [ajaxToolsSkin, setAjaxToolsSkin] = useState('light')
   const [ajaxToolsSwitchOn, setAjaxToolsSwitchOn] = useState(true) // 默认开启
   const [ajaxToolsSwitchOnNot200, setAjaxToolsSwitchOnNot200] = useState(true) // 默认开启
   const [ajaxToolsTopLevelOnly, setAjaxToolsTopLevelOnly] = useState(true) // 默认开启
   const [ajaxDataList, setAjaxDataList] = useState(defaultAjaxDataList)
+  const [interceptorStateReady, setInterceptorStateReady] = useState(false)
+  const [pendingEditTarget, setPendingEditTarget] = useState<PendingInterceptorEditTarget | null>(null)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     const themeParam = params.get('theme')
@@ -64,6 +71,7 @@ function App() {
             ajaxToolsSwitchOn = true,
             ajaxToolsSwitchOnNot200 = true,
             ajaxToolsTopLevelOnly = true,
+            [PENDING_INTERCEPTOR_EDIT_TARGET_STORAGE_KEY]: nextPendingEditTarget = null,
           } = result
           if (ajaxDataList.length > 0) {
             setAjaxDataList(ajaxDataList)
@@ -71,6 +79,8 @@ function App() {
           setAjaxToolsSwitchOn(ajaxToolsSwitchOn)
           setAjaxToolsSwitchOnNot200(ajaxToolsSwitchOnNot200)
           setAjaxToolsTopLevelOnly(ajaxToolsTopLevelOnly)
+          setPendingEditTarget(nextPendingEditTarget)
+          setInterceptorStateReady(true)
         },
       )
 
@@ -88,6 +98,18 @@ function App() {
           ) {
             setAjaxDataList(newValue)
           }
+        }
+
+        if (
+          namespace === 'local'
+          && Object.prototype.hasOwnProperty.call(
+            changes,
+            PENDING_INTERCEPTOR_EDIT_TARGET_STORAGE_KEY,
+          )
+        ) {
+          setPendingEditTarget(
+            changes[PENDING_INTERCEPTOR_EDIT_TARGET_STORAGE_KEY].newValue || null,
+          )
         }
       }
       chrome.storage.onChanged.addListener(handleStorageChange)
@@ -109,6 +131,31 @@ function App() {
       })
     }
   }, [])
+
+  const handlePendingEditTargetHandled = (targetId: string) => {
+    if (!targetId || lastHandledPendingEditTargetIdRef.current === targetId) {
+      return
+    }
+
+    lastHandledPendingEditTargetIdRef.current = targetId
+    setPendingEditTarget((current) => {
+      if (current?.id === targetId) {
+        return null
+      }
+
+      return current
+    })
+
+    chrome.storage.local.get(
+      [PENDING_INTERCEPTOR_EDIT_TARGET_STORAGE_KEY],
+      (result) => {
+        const currentTarget = result[PENDING_INTERCEPTOR_EDIT_TARGET_STORAGE_KEY]
+        if (currentTarget?.id === targetId) {
+          chrome.storage.local.remove(PENDING_INTERCEPTOR_EDIT_TARGET_STORAGE_KEY)
+        }
+      },
+    )
+  }
 
   useEffect(() => {
     // Simple system theme detection inline
@@ -467,7 +514,10 @@ function App() {
           <InterceptorPanel
             ajaxDataList={ajaxDataList}
             modifyDataModalRef={modifyDataModalRef}
+            interceptorStateReady={interceptorStateReady}
+            pendingEditTarget={pendingEditTarget}
             theme={isDarkMode ? 'vs-dark' : 'vs'}
+            onPendingEditTargetHandled={handlePendingEditTargetHandled}
             onGroupAdd={onGroupAdd}
             onImportClick={onImportClick}
             onGroupSummaryTextChange={onGroupSummaryTextChange}

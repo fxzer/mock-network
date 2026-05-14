@@ -1,6 +1,7 @@
 import type {
   AjaxDataListObject,
   DefaultInterfaceObject,
+  PendingInterceptorEditTarget,
 } from '../../constants'
 import {
   FilterOutlined,
@@ -9,6 +10,10 @@ import {
   PlayCircleOutlined,
   StopOutlined,
 } from '@ant-design/icons'
+import {
+  getStableRequestId,
+  inferResourceType,
+} from '@shared/network-request-utils.js'
 import {
   theme as antdTheme,
   Button,
@@ -23,17 +28,16 @@ import {
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import FormatApiMsg from '../../components/FormatApiMsg'
-import { defaultInterface } from '../../constants'
+import {
+  defaultInterface,
+  PENDING_INTERCEPTOR_EDIT_TARGET_STORAGE_KEY,
+} from '../../constants'
 import useTheme from '../../hooks/useTheme'
 import {
   extractApiOperation,
   isSysxcpApi,
   parseRequestDisplayData,
 } from '../../utils'
-import {
-  getStableRequestId,
-  inferResourceType,
-} from '@shared/network-request-utils.js'
 import { findMatchedInterceptorRule } from './utils'
 import './App.css'
 
@@ -52,6 +56,11 @@ interface AddInterceptorParams {
   request: string
   responseText: string
   matchType?: string
+}
+
+interface ExistingInterceptorTarget extends PendingInterceptorEditTarget {
+  groupIndex: number
+  interfaceIndex: number
 }
 
 interface NameValueEntry {
@@ -338,6 +347,40 @@ function getStatusTextColor(status: number | string | undefined) {
   }
 
   return undefined
+}
+
+function findExistingInterceptorTarget({
+  ajaxDataList,
+  matchType = 'normal',
+  request,
+}: {
+  ajaxDataList: AjaxDataListObject[]
+  matchType?: string
+  request: string
+}) {
+  for (let groupIndex = 0; groupIndex < ajaxDataList.length; groupIndex += 1) {
+    const group = ajaxDataList[groupIndex]
+    const interfaceIndex = group.interfaceList.findIndex(
+      (item: DefaultInterfaceObject) =>
+        item.request === request && item.matchType === matchType,
+    )
+
+    if (interfaceIndex < 0) {
+      continue
+    }
+
+    return {
+      groupIndex,
+      interfaceIndex,
+      id: `edit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      interfaceKey: group.interfaceList[interfaceIndex]?.key,
+      matchType,
+      preferredEditor: 'inner' as const,
+      request,
+    }
+  }
+
+  return null
 }
 
 function getColumns({
@@ -875,6 +918,19 @@ export default function App() {
     })
   }, [])
 
+  const openExistingInterceptorEditor = useCallback(({
+    iframeVisible,
+    target,
+  }: {
+    iframeVisible?: boolean
+    target: ExistingInterceptorTarget
+  }) => {
+    showSidePage(iframeVisible)
+    chrome.storage.local.set({
+      [PENDING_INTERCEPTOR_EDIT_TARGET_STORAGE_KEY]: target,
+    })
+  }, [showSidePage])
+
   const addInterceptor = useCallback(({
     ajaxDataList,
     groupIndex = 0,
@@ -991,6 +1047,13 @@ export default function App() {
         (item: { matchType?: string, request: string | null }) =>
           item.request === request && item.matchType === matchType,
       )
+      const existingTarget = hasIntercepted
+        ? findExistingInterceptorTarget({
+            ajaxDataList,
+            matchType,
+            request,
+          })
+        : null
 
       if (!hasIntercepted) {
         await addInterceptorIfNeeded({
@@ -1003,18 +1066,56 @@ export default function App() {
         return
       }
 
-      const confirmed = await new Promise<boolean>((resolve) => {
-        modal.confirm({
+      const nextAction = await new Promise<'cancel' | 'confirm' | 'edit'>((resolve) => {
+        let settled = false
+        let confirmModal: { destroy: () => void } | null = null
+        const finish = (action: 'cancel' | 'confirm' | 'edit') => {
+          if (settled) {
+            return
+          }
+
+          settled = true
+          confirmModal?.destroy()
+          resolve(action)
+        }
+
+        confirmModal = modal.confirm({
           cancelText: '取消',
           content: '该请求已存在拦截规则，是否继续添加？',
+          footer: (_, { CancelBtn, OkBtn }) => (
+            <Space>
+              <CancelBtn />
+              <Button
+                style={{
+                  backgroundColor: '#16a34a',
+                  borderColor: '#16a34a',
+                  color: '#fff',
+                }}
+                onClick={() => finish('edit')}
+              >
+                编辑
+              </Button>
+              <OkBtn />
+            </Space>
+          ),
           okText: '确认',
-          onCancel: () => resolve(false),
-          onOk: () => resolve(true),
+          onCancel: () => finish('cancel'),
+          onOk: () => finish('confirm'),
           title: '请求已被拦截',
         })
       })
 
-      if (!confirmed) {
+      if (nextAction === 'edit') {
+        if (existingTarget) {
+          openExistingInterceptorEditor({
+            iframeVisible,
+            target: existingTarget,
+          })
+        }
+        return
+      }
+
+      if (nextAction !== 'confirm') {
         return
       }
 
@@ -1029,7 +1130,7 @@ export default function App() {
     catch (error) {
       console.error(error)
     }
-  }, [addInterceptorIfNeeded, modal])
+  }, [addInterceptorIfNeeded, modal, openExistingInterceptorEditor])
 
   const onAddInterceptorClick = useCallback((record: NetworkRecord) => {
     if (!record?.request?.url) {

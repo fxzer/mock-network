@@ -22,6 +22,17 @@ export interface DefaultInterfaceObject {
   [key: string]: any
 }
 
+export interface PendingInterceptorEditTarget {
+  id: string
+  interfaceKey?: string
+  matchType?: string
+  preferredEditor?: 'full' | 'inner'
+  request: string
+}
+
+export const PENDING_INTERCEPTOR_EDIT_TARGET_STORAGE_KEY
+  = 'ajaxToolsPendingInterceptorEditTarget'
+
 export const defaultInterface: DefaultInterfaceObject = {
   key: '1',
   open: true,

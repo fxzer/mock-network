@@ -1,5 +1,8 @@
 import type { MenuProps } from 'antd'
-import type { DefaultInterfaceObject } from '../../constants'
+import type {
+  DefaultInterfaceObject,
+  PendingInterceptorEditTarget,
+} from '../../constants'
 import {
   DeleteOutlined,
   DropboxOutlined,
@@ -92,7 +95,10 @@ function assembleSysxcpApiResponse(
 interface InterceptorPanelProps {
   ajaxDataList: any[]
   modifyDataModalRef: any
+  interceptorStateReady?: boolean
+  pendingEditTarget?: PendingInterceptorEditTarget | null
   theme?: string
+  onPendingEditTargetHandled?: (targetId: string) => void
   onGroupAdd: () => void
   onImportClick: () => void
   onGroupSummaryTextChange: (
@@ -121,7 +127,10 @@ interface InterceptorPanelProps {
 const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
   ajaxDataList,
   modifyDataModalRef,
+  interceptorStateReady = false,
+  pendingEditTarget = null,
   theme = 'vs',
+  onPendingEditTargetHandled,
   onGroupAdd,
   onImportClick,
   onGroupSummaryTextChange,
@@ -177,6 +186,26 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
     }
   }
 
+  const openRuleEditModal = (
+    groupIndex: number,
+    interfaceIndex: number,
+    rule: DefaultInterfaceObject,
+  ) => {
+    modifyDataModalRef.current.openModal({
+      groupIndex,
+      interfaceIndex,
+      activeTab: 'Response',
+      request: rule.request,
+      replacementMethod: rule.replacementMethod,
+      replacementUrl: rule.replacementUrl,
+      replacementStatusCode: rule.replacementStatusCode,
+      headersText: rule.headers,
+      requestPayloadText: rule.requestPayloadText,
+      responseLanguage: rule.language,
+      responseText: rule.responseText,
+    })
+  }
+
   // 保存内层编辑
   const saveInnerEdit = () => {
     try {
@@ -213,6 +242,78 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
     }
   }
 
+  React.useEffect(() => {
+    if (!interceptorStateReady || !pendingEditTarget) {
+      return
+    }
+
+    let matchedGroupIndex = -1
+    let matchedInterfaceIndex = -1
+    let matchedRule: DefaultInterfaceObject | null = null
+
+    ajaxDataList.some((group, groupIndex) => {
+      const interfaceIndex = group.interfaceList.findIndex((rule: DefaultInterfaceObject) => {
+        if (
+          pendingEditTarget.interfaceKey
+          && rule.key === pendingEditTarget.interfaceKey
+        ) {
+          return true
+        }
+
+        return (
+          rule.request === pendingEditTarget.request
+          && rule.matchType === (pendingEditTarget.matchType || 'normal')
+        )
+      })
+
+      if (interfaceIndex < 0) {
+        return false
+      }
+
+      matchedGroupIndex = groupIndex
+      matchedInterfaceIndex = interfaceIndex
+      matchedRule = group.interfaceList[interfaceIndex]
+      return true
+    })
+
+    if (!matchedRule || matchedGroupIndex < 0 || matchedInterfaceIndex < 0) {
+      onPendingEditTargetHandled?.(pendingEditTarget.id)
+      return
+    }
+
+    const currentKeys = Array.isArray(ajaxDataList[matchedGroupIndex]?.collapseActiveKeys)
+      ? ajaxDataList[matchedGroupIndex].collapseActiveKeys
+      : []
+
+    if (!currentKeys.includes(matchedRule.key)) {
+      onCollapseChange(matchedGroupIndex, [...currentKeys, matchedRule.key])
+    }
+
+    if (
+      pendingEditTarget.preferredEditor === 'inner'
+      && isSysxcpApiResponse(matchedRule.responseText)
+    ) {
+      openInnerEditModal(
+        matchedGroupIndex,
+        matchedInterfaceIndex,
+        matchedRule.responseText,
+      )
+    }
+    else {
+      openRuleEditModal(matchedGroupIndex, matchedInterfaceIndex, matchedRule)
+    }
+
+    onPendingEditTargetHandled?.(pendingEditTarget.id)
+  }, [
+    ajaxDataList,
+    interceptorStateReady,
+    onCollapseChange,
+    onPendingEditTargetHandled,
+    openInnerEditModal,
+    openRuleEditModal,
+    pendingEditTarget,
+  ])
+
   const genExtra = (
     groupIndex: number,
     interfaceIndex: number,
@@ -224,20 +325,7 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
         key: '0',
         label: '编辑数据',
         icon: <FormOutlined style={{ fontSize: 14 }} />,
-        onClick: () =>
-          modifyDataModalRef.current.openModal({
-            groupIndex,
-            interfaceIndex,
-            activeTab: 'Response',
-            request: v.request,
-            replacementMethod: v.replacementMethod,
-            replacementUrl: v.replacementUrl,
-            replacementStatusCode: v.replacementStatusCode,
-            headersText: v.headers,
-            requestPayloadText: v.requestPayloadText,
-            responseLanguage: v.language,
-            responseText: v.responseText,
-          }),
+        onClick: () => openRuleEditModal(groupIndex, interfaceIndex, v),
       },
       {
         key: '1',
@@ -513,20 +601,7 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
                       <FormOutlined
                         title="编辑"
                         className="ajax-tools-textarea-edit"
-                        onClick={() =>
-                          modifyDataModalRef.current.openModal({
-                            groupIndex: index,
-                            interfaceIndex: i,
-                            activeTab: 'Response',
-                            request: v.request,
-                            replacementMethod: v.replacementMethod,
-                            replacementUrl: v.replacementUrl,
-                            replacementStatusCode: v.replacementStatusCode,
-                            headersText: v.headers,
-                            requestPayloadText: v.requestPayloadText,
-                            responseLanguage: v.language,
-                            responseText: v.responseText,
-                          })}
+                        onClick={() => openRuleEditModal(index, i, v)}
                       />
                     </div>
                   </Panel>

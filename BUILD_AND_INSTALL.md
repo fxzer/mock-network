@@ -4,19 +4,47 @@
 
 ### 1. 安装依赖
 
+在仓库根目录下进入前端子项目并安装依赖：
+
 ```bash
-cd /Users/fxj/m/ajax-tools/src/ui
+cd src/ui
 pnpm install
 ```
 
 ### 2. 构建项目
 
 ```bash
-# 构建生产版本
+# 主 UI（Vite 8 / Rolldown，多页入口见 src/ui/vite.config.js）
 pnpm build
 ```
 
 构建完成后会在 `src/ui/dist` 目录生成打包文件。
+
+#### 2.1 inject 与整包发布（打包流水线说明）
+
+`src/inject/index.js` 与 `mock.js` **不参与**主应用的 HTML 多页入口，因此使用单独的 **`src/ui/vite.inject.config.mjs`**：在**仓库根目录**下调用 Vite，以 Rolldown 将每个文件打成 **IIFE**，并用 **Oxc** 做生产压缩。与主 UI 共用同一套 `vite` 版本，**不再**在 `package.json` 里单独声明 `esbuild` 作为 inject 的压缩工具。
+
+| 项目 | 配置文件 | 产物位置（本地） | 说明 |
+|------|----------|------------------|------|
+| 主 UI | `src/ui/vite.config.js` | `src/ui/dist/` | 侧边栏、M-Network、规则页等 |
+| inject | `src/ui/vite.inject.config.mjs` | 先写入 `.cache/inject-dist/`，再由 `scripts/pack.js` 覆盖到打包目录内的 `src/inject/` | 两次构建：`INJECT_FILE=index` 与 `INJECT_FILE=mock`（第二次设 `INJECT_EMPTY_OUT_DIR=0` 以保留同一输出目录）；避免多入口 IIFE 与 `codeSplitting` 冲突 |
+
+**本地只预构建 inject**（在 `src/ui` 下，与 `package.json` 中 `build:inject` 一致）：
+
+```bash
+cd src/ui
+pnpm run build:inject
+```
+
+**一键打可分发目录与 zip**：在仓库根目录执行（加 `-b` 会先尝试在 `src/ui` 内执行 `pnpm build`）：
+
+```bash
+node scripts/pack.js -b
+```
+
+成功后会得到 **`mock-network-extension/`**（可直接在 Chrome 中「加载已解压的扩展程序」）以及 **`mock-network-extension.zip`**。若 `src/ui/node_modules` 不存在或没有 `vite` 可执行文件，inject 会保持从源码拷贝的未压缩版本，并在日志中提示。
+
+**实现细节（便于排错）**：IIFE 的 `output.name` 设为 `__MN_INJECT_INDEX__` / `__MN_INJECT_MOCK__`，用于消除 Rolldown 对无名 IIFE 的告警；`mock.js` 中占位符参数解析使用 **间接** `(0, eval)(...)`，避免对直接 `eval` 的构建告警，语义上仍在全局作用域执行字符串（参见 [Rolldown：Avoiding Direct eval](https://rolldown.rs/guide/troubleshooting#avoiding-direct-eval)）。
 
 ### 3. 加载到 Chrome 浏览器
 
@@ -24,7 +52,7 @@ pnpm build
 2. 在地址栏输入: `chrome://extensions/`
 3. 打开右上角的 **"开发者模式"** 开关
 4. 点击 **"加载已解压的扩展程序"** 按钮
-5. 选择项目根目录: `/Users/fxj/m/ajax-tools`
+5. 选择本仓库根目录下已构建好的扩展目录（开发时选含 `manifest.json` 的仓库根；若使用 `node scripts/pack.js` 产出，则选 **`mock-network-extension`** 目录）
 6. 完成! 扩展已加载
 
 ---
@@ -56,7 +84,7 @@ pnpm build
 如果你需要修改代码并实时预览:
 
 ```bash
-cd /Users/fxj/m/ajax-tools/src/ui
+cd src/ui
 
 # 启动开发服务器
 pnpm dev
@@ -108,7 +136,7 @@ pnpm dev
 
 ```bash
 # 清理依赖重新安装
-cd /Users/fxj/m/ajax-tools/src/ui
+cd src/ui
 rm -rf node_modules pnpm-lock.yaml
 pnpm install
 pnpm build
@@ -119,8 +147,14 @@ pnpm build
 检查以下几点:
 
 - 确保 `manifest.json` 文件存在
-- 确保 `src/ui/dist` 目录已构建
+- 开发加载：确保已执行 `pnpm build`，存在 `src/ui/dist`
+- 使用 `node scripts/pack.js` 后：加载 **`mock-network-extension`** 目录（内含已改写的 `src/ui` 路径）
 - 查看 Chrome 扩展页面的错误信息
+
+### Q6: inject 打包告警或体积异常?
+
+- 先执行 `cd src/ui && pnpm install`，确保存在 `node_modules/.bin/vite`
+- 单独验证：`pnpm run build:inject`，检查仓库根 `.cache/inject-dist/` 下 `index.js`、`mock.js`
 
 ### Q3: 修改代码后不生效?
 
@@ -151,23 +185,29 @@ corepack prepare pnpm@latest --activate
 ## 📝 项目目录说明
 
 ```
-ajax-tools/
+<仓库根>/
 ├── manifest.json              # ✅ 必需 - 扩展配置
+├── scripts/
+│   └── pack.js                # 整包复制、inject 二次构建、写 zip
 ├── assets/                    # ✅ 必需 - 静态资源
 │   └── icons/                 # 图标资源
+├── .cache/                    # 构建缓存（gitignore），含 inject-dist
 └── src/                       # ✅ 源码目录
     ├── background/            # 后台服务脚本
     │   └── index.js
     ├── content/               # 内容脚本
     │   └── index.js
-    ├── inject/                # 页面注入脚本
+    ├── inject/                # 页面注入脚本（源码；发布包内为 Rolldown 产物）
     │   ├── index.js
     │   └── mock.js
+    ├── shared/                # DevTools 与 UI 共用的工具模块
     ├── devtools/              # DevTools 扩展入口
     │   ├── index.html
     │   └── index.js
-    └── ui/                    # React UI 应用
-        ├── dist/              # ⚠️ 需要构建 - 打包后的文件
+    └── ui/                    # React UI 应用（Vite 8）
+        ├── dist/              # ⚠️ 需要 pnpm build - 主 UI 打包输出
+        ├── vite.config.js     # 主应用 Vite 配置
+        ├── vite.inject.config.mjs  # inject 单独构建配置
         ├── pages/
         │   ├── interceptor/   # 拦截器配置面板
         │   ├── network/       # 网络监控面板
@@ -176,7 +216,7 @@ ajax-tools/
         ├── hooks/             # 自定义 hooks
         ├── utils/             # 工具函数
         ├── constants/         # 常量/默认值
-        └── package.json       # 依赖配置
+        └── package.json       # 依赖与 scripts（含 build:inject）
 ```
 
 ---
@@ -184,8 +224,8 @@ ajax-tools/
 ## 🚀 快速命令参考
 
 ```bash
-# 进入前端项目目录
-cd /Users/fxj/m/ajax-tools/src/ui
+# 进入前端项目目录（相对仓库根）
+cd src/ui
 
 # 安装依赖
 pnpm install
@@ -193,11 +233,24 @@ pnpm install
 # 开发模式 (http://localhost:4001)
 pnpm dev
 
-# 构建生产版本
+# 构建主 UI（生产）
 pnpm build
 
-# 预览构建结果
+# 仅构建 inject（两次 Rolldown+IIFE，输出到仓库根 .cache/inject-dist/）
+pnpm run build:inject
+
+# 预览主 UI 构建结果
 pnpm preview
+```
+
+在**仓库根目录**：
+
+```bash
+# 构建 UI 并打 mock-network-extension 与 zip
+node scripts/pack.js -b
+
+# 不触发 UI 构建（使用已有 src/ui/dist）
+node scripts/pack.js
 ```
 
 ---

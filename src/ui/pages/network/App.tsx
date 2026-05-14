@@ -30,6 +30,10 @@ import {
   isSysxcpApi,
   parseRequestDisplayData,
 } from '../../utils'
+import {
+  getStableRequestId,
+  inferResourceType,
+} from '@shared/network-request-utils.js'
 import { findMatchedInterceptorRule } from './utils'
 import './App.css'
 
@@ -209,31 +213,6 @@ function getRequestLookupPath(url: string) {
   return url.split('?')[0].match('(?<=//.*/).+')?.[0] || ''
 }
 
-function buildRequestIdentitySource(record: any) {
-  return [
-    record?.startedDateTime || '',
-    record?.request?.method || '',
-    record?.request?.url || '',
-    record?.response?.status ?? '',
-    record?.request?.postData?.text || '',
-  ].join('||')
-}
-
-function hashString(value: string) {
-  let hash = 0
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
-  }
-
-  return hash.toString(36)
-}
-
-function getStableRequestId(record: any) {
-  const identitySource = buildRequestIdentitySource(record)
-  return identitySource ? `req_${hashString(identitySource)}` : `req_${Date.now()}`
-}
-
 function trimAndDedupeRecords(records: NetworkRecord[]) {
   const result: NetworkRecord[] = []
   const seenIds = new Set<string>()
@@ -267,41 +246,6 @@ function toNameValueEntries(entries: any): NameValueEntry[] {
   }))
 }
 
-function getHeaderValue(headers: NameValueEntry[], targetName: string) {
-  const normalizedName = String(targetName || '').toLowerCase()
-  const matchedHeader = headers.find(
-    header => String(header.name || '').toLowerCase() === normalizedName,
-  )
-
-  return matchedHeader?.value || ''
-}
-
-function inferResourceType(record: any) {
-  if (['fetch', 'xhr'].includes(record?._resourceType)) {
-    return record._resourceType
-  }
-
-  const requestHeaders = toNameValueEntries(record?.request?.headers)
-  const responseHeaders = toNameValueEntries(record?.response?.headers)
-  const contentType = String(
-    record?.response?.content?.mimeType
-    || getHeaderValue(responseHeaders, 'content-type')
-    || '',
-  ).toLowerCase()
-  const acceptHeader = String(
-    getHeaderValue(requestHeaders, 'accept') || '',
-  ).toLowerCase()
-  const requestUrl = String(record?.request?.url || '')
-  const hasPayload = !!record?.request?.postData?.text
-  const looksLikeApiRequest
-    = /\/api\/|graphql|rpc/i.test(requestUrl)
-      || hasPayload
-      || contentType.includes('json')
-      || acceptHeader.includes('json')
-
-  return looksLikeApiRequest ? 'fetch' : ''
-}
-
 function getChromeLocalStorage(keys: string | string[]) {
   return new Promise<any>((resolve, reject) => {
     chrome.storage.local.get(keys, (result) => {
@@ -316,7 +260,7 @@ function getChromeLocalStorage(keys: string | string[]) {
 }
 
 function normalizeNetworkRecord(record: any): NetworkRecord | null {
-  const resourceType = inferResourceType(record)
+  const resourceType = inferResourceType(record) as string
 
   if (!record?.request || !resourceType) {
     return null

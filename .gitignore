@@ -37,6 +37,7 @@ stats.html
 
 # Misc
 .cache
+src/.cache
 coverage
 *.tsbuildinfo
 mock-network-extension

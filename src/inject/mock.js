@@ -534,7 +534,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	                应该属于 Window Firefox 30.0 的 BUG
 	            */
 	            /* jshint -W061 */
-	            params = eval('(function(){ return [].splice.call(arguments, 0 ) })(' + params + ')')
+	            params = (0, eval)('(function(){ return [].splice.call(arguments, 0 ) })(' + params + ')')
 	        } catch (error) {
 	            // 2. 如果失败，只能解析为字符串
 	            // console.error(error)

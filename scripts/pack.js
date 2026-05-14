@@ -108,6 +108,30 @@ async function main() {
         recursiveCopy(path.join(PROJECT_ROOT, 'src/content'), path.join(DIST_DIR, 'src/content'));
         recursiveCopy(path.join(PROJECT_ROOT, 'src/inject'), path.join(DIST_DIR, 'src/inject'));
         recursiveCopy(path.join(PROJECT_ROOT, 'src/devtools'), path.join(DIST_DIR, 'src/devtools'));
+        recursiveCopy(path.join(PROJECT_ROOT, 'src/shared'), path.join(DIST_DIR, 'src/shared'));
+
+        const distInjectDir = path.join(DIST_DIR, 'src/inject');
+        const viteBin = path.join(PROJECT_ROOT, 'src/ui/node_modules', '.bin', 'vite');
+        const injectViteConfig = path.join(PROJECT_ROOT, 'src/ui/vite.inject.config.mjs');
+        const injectBuildOutDir = path.join(PROJECT_ROOT, '.cache/inject-dist');
+        if (fs.existsSync(viteBin)) {
+            console.log('🗜️  Minifying inject scripts (Vite / Rolldown + Oxc)...');
+            execSync(`"${viteBin}" build --config "${injectViteConfig}" --mode production`, {
+                stdio: 'inherit',
+                cwd: PROJECT_ROOT,
+                env: { ...process.env, INJECT_FILE: 'index' },
+            });
+            execSync(`"${viteBin}" build --config "${injectViteConfig}" --mode production`, {
+                stdio: 'inherit',
+                cwd: PROJECT_ROOT,
+                env: { ...process.env, INJECT_FILE: 'mock', INJECT_EMPTY_OUT_DIR: '0' },
+            });
+            copyFile(path.join(injectBuildOutDir, 'index.js'), path.join(distInjectDir, 'index.js'));
+            copyFile(path.join(injectBuildOutDir, 'mock.js'), path.join(distInjectDir, 'mock.js'));
+            console.log('✅ inject minify complete.');
+        } else {
+            console.warn('⚠️  vite not found under src/ui/node_modules; inject scripts left uncompressed. Run pnpm install in src/ui.');
+        }
 
         // 3. Process Manifest and Source Files (Rename dist -> build)
         console.log('📝 Processing Manifest and Source Files...');

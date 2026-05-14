@@ -1,3 +1,9 @@
+import {
+  getHeaderValue,
+  getStableRequestId,
+  inferResourceType,
+} from '../shared/network-request-utils.js'
+
 const requestBuffer = []
 const pendingSyncRequests = []
 const MAX_REQUEST_BUFFER = 2000
@@ -9,31 +15,6 @@ let isRecording = true
 let panelWindow = null
 let syncScheduled = false
 let syncTimerId = null
-
-function buildRequestIdentitySource(request) {
-  return [
-    request?.startedDateTime || '',
-    request?.request?.method || '',
-    request?.request?.url || '',
-    request?.response?.status ?? '',
-    request?.request?.postData?.text || '',
-  ].join('||')
-}
-
-function hashString(value) {
-  let hash = 0
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
-  }
-
-  return hash.toString(36)
-}
-
-function getStableRequestId(request) {
-  const identitySource = buildRequestIdentitySource(request)
-  return identitySource ? `req_${hashString(identitySource)}` : `req_${Date.now()}`
-}
 
 function upsertRequestBuffer(serializedRequest) {
   const existingIndex = requestBuffer.findIndex(
@@ -128,41 +109,6 @@ function getRequestLookupPath(url) {
   }
 
   return url.split('?')[0].match('(?<=//.*/).+')?.[0] || ''
-}
-
-function getHeaderValue(headers, targetName) {
-  const normalizedName = String(targetName || '').toLowerCase()
-  const matchedHeader = Array.isArray(headers)
-    ? headers.find(
-        header => String(header?.name || '').toLowerCase() === normalizedName,
-      )
-    : null
-
-  return matchedHeader?.value || ''
-}
-
-function inferResourceType(request) {
-  if (['fetch', 'xhr'].includes(request?._resourceType)) {
-    return request._resourceType
-  }
-
-  const contentType = String(
-    request?.response?.content?.mimeType
-    || getHeaderValue(request?.response?.headers, 'content-type')
-    || '',
-  ).toLowerCase()
-  const acceptHeader = String(
-    getHeaderValue(request?.request?.headers, 'accept') || '',
-  ).toLowerCase()
-  const requestUrl = String(request?.request?.url || '')
-  const hasPayload = !!request?.request?.postData?.text
-  const looksLikeApiRequest
-    = /\/api\/|graphql|rpc/i.test(requestUrl)
-      || hasPayload
-      || contentType.includes('json')
-      || acceptHeader.includes('json')
-
-  return looksLikeApiRequest ? 'fetch' : ''
 }
 
 function serializeRequest(request) {

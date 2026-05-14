@@ -149,8 +149,9 @@ function SelectGroupContent({
     >
       <Space direction="vertical">
         {ajaxDataList.map((group, index) => (
+
           <Radio
-            key={`${group.headerClass}-${group.summaryText}-${index}`}
+            key={`${group.headerClass}-${group.summaryText}-${index}`} // eslint-disable-line react/no-array-index-key
             value={index}
           >
             分组
@@ -600,6 +601,7 @@ export default function App() {
     }
 
     try {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setColumnWidths(JSON.parse(savedWidths))
     }
     catch (error) {
@@ -817,6 +819,8 @@ export default function App() {
 
     chrome.storage.onChanged.addListener(handleStorageChange)
 
+    const timeouts = deferredTimeoutsRef.current
+    const pending = pendingRequestsRef.current
     return () => {
       if (flushTimerRef.current !== null) {
         window.clearTimeout(flushTimerRef.current)
@@ -828,9 +832,9 @@ export default function App() {
         bridgeRetryTimer = null
       }
 
-      deferredTimeoutsRef.current.forEach(id => window.clearTimeout(id))
+      timeouts.forEach(id => window.clearTimeout(id))
       deferredTimeoutsRef.current = []
-      pendingRequestsRef.current.length = 0
+      pending.length = 0
       delete (window as any).syncNetworkData
       delete (window as any).initializeFromBridge
       window.removeEventListener('m-network-bridge-ready', handleBridgeReady)

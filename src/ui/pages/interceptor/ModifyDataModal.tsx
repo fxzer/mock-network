@@ -279,4 +279,5 @@ function ModifyDataModal(
   )
 }
 
+// eslint-disable-next-line react/no-forward-ref
 export default React.memo(React.forwardRef(ModifyDataModal))

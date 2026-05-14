@@ -1,5 +1,6 @@
 /* global __dirname */
 import path from 'node:path'
+import process from 'node:process'
 
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'

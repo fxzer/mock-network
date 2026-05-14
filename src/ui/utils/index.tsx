@@ -8,7 +8,7 @@ export function parseRequestDisplayData(record: any) {
       const urlObj = new URL(record.request.url)
       displayPath = urlObj.pathname
     }
-    catch (e) {
+    catch {
       displayPath = record.request.url
     }
   }
@@ -111,4 +111,19 @@ export function formatDisplayPath(text: string) {
     }
   }
   return text
+}
+
+export function debounce<T extends (...args: any[]) => void>(
+  func: T,
+  delay: number,
+): T {
+  let timeoutId: ReturnType<typeof setTimeout>
+
+  return function (this: ThisParameterType<T>, ...args: Parameters<T>): void {
+    clearTimeout(timeoutId)
+
+    timeoutId = setTimeout(() => {
+      func.apply(this, args)
+    }, delay)
+  } as T
 }

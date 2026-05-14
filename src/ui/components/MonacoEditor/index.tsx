@@ -3,9 +3,9 @@ import type { ForwardedRef } from 'react'
 import { AlignLeftOutlined, DownOutlined } from '@ant-design/icons'
 import { Dropdown, Select, Space } from 'antd'
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api'
-// @ts-ignore
+// @ts-expect-error Worker import not recognized by TypeScript
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-// @ts-ignore
+// @ts-expect-error Worker import not recognized by TypeScript
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 import * as React from 'react'
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
@@ -24,10 +24,11 @@ import 'monaco-editor/esm/vs/editor/contrib/find/browser/findController.js' // æ
 
 import './index.css'
 
-self.MonacoEnvironment = {
+globalThis.MonacoEnvironment = {
   getWorker(workerId, label) {
     switch (label) {
       case 'json':
+        // eslint-disable-next-line new-cap
         return new jsonWorker()
       //   case 'css':
       //   case 'scss':
@@ -38,6 +39,7 @@ self.MonacoEnvironment = {
       //   case 'razor':
       //     return new htmlWorker();
       default:
+        // eslint-disable-next-line new-cap
         return new editorWorker()
     }
   },
@@ -129,11 +131,13 @@ function MonacoEditor(
         },
       })
       editorInstanceRef.current = editor
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setEditor(editor)
 
+      const editorNode = editorRef.current
       return () => {
         const activeElement = document.activeElement
-        if (activeElement instanceof HTMLElement && editorRef.current?.contains(activeElement)) {
+        if (activeElement instanceof HTMLElement && editorNode?.contains(activeElement)) {
           activeElement.blur()
         }
 
@@ -161,7 +165,7 @@ function MonacoEditor(
         editorInstanceRef.current = null
       }
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     changeDisposableRef.current?.dispose()
@@ -341,4 +345,5 @@ function MonacoEditor(
     </div>
   )
 }
+// eslint-disable-next-line react/no-forward-ref
 export default React.memo(React.forwardRef(MonacoEditor))

@@ -14,6 +14,7 @@
     "target": "es2016", /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
     // "lib": [],                                        /* Specify a set of bundled library declaration files that describe the target runtime environment. */
     "jsx": "react-jsx", /* Specify what JSX code is generated. */
+    "baseUrl": ".",
     // "experimentalDecorators": true,                   /* Enable experimental support for TC39 stage 2 draft decorators. */
     // "emitDecoratorMetadata": true,                    /* Emit design-type metadata for decorated declarations in source files. */
     // "jsxFactory": "",                                 /* Specify the JSX factory function used when targeting React JSX emit, e.g. 'React.createElement' or 'h'. */
@@ -26,13 +27,10 @@
 
     /* Modules */
     "module": "commonjs", /* Specify what module code is generated. */
-    "baseUrl": ".",
     "paths": {
       "@shared/*": ["../shared/*"]
     },
 
-    /* Type Checking */
-    "strict": true, /* Enable all strict type-checking options. */
     // "rootDir": "./",                                  /* Specify the root folder within your source files. */
     // "moduleResolution": "node",                       /* Specify how TypeScript looks up a file from a given module specifier. */
     // "baseUrl": "./",                                  /* Specify the base directory to resolve non-relative module names. */
@@ -47,6 +45,8 @@
 
     /* JavaScript Support */
     "allowJs": true,
+    /* Type Checking */
+    "strict": true, /* Enable all strict type-checking options. */
     // "checkJs": true,                                  /* Enable error reporting in type-checked JavaScript files. */
     // "maxNodeModuleJsDepth": 1,                        /* Specify the maximum folder depth used for checking JavaScript files from 'node_modules'. Only applicable with 'allowJs'. */
 

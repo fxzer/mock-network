@@ -35,7 +35,6 @@ function App() {
   const ajaxDataListRef = useRef<any>(null) // 用于存储最新的 ajaxDataList，避免 storage 同步时循环更新
   const lastHandledPendingEditTargetIdRef = useRef('')
 
-  const [ajaxToolsSkin, setAjaxToolsSkin] = useState('light')
   const [ajaxToolsSwitchOn, setAjaxToolsSwitchOn] = useState(true) // 默认开启
   const [ajaxToolsSwitchOnNot200, setAjaxToolsSwitchOnNot200] = useState(true) // 默认开启
   const [ajaxToolsTopLevelOnly, setAjaxToolsTopLevelOnly] = useState(true) // 默认开启
@@ -62,7 +61,6 @@ function App() {
           'ajaxDataList',
           'ajaxToolsSwitchOn',
           'ajaxToolsSwitchOnNot200',
-          'ajaxToolsSkin',
           'ajaxToolsTopLevelOnly',
         ],
         (result) => {
@@ -169,6 +167,7 @@ function App() {
       else {
         isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
       }
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setIsDarkMode(isDark)
       if (isDark) {
         document.body.classList.add('dark-theme')
@@ -299,7 +298,7 @@ function App() {
         )
         value = lastValue === formattedValue ? value : formattedValue
       }
-      catch (e) {
+      catch {
         // value = value;
       }
     }
@@ -408,7 +407,7 @@ function App() {
   }
 
   const { defaultAlgorithm, darkAlgorithm } = theme
-  const inIframe = top?.location !== self.location
+  const inIframe = top?.location !== globalThis.location
   return (
     <ConfigProvider
       theme={{

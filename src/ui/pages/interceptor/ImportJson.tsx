@@ -121,11 +121,8 @@ function importJSON(file: Blob | UploadFile<any>) {
     const reader = new FileReader()
     reader.readAsText(file as Blob)
 
-    reader.onerror = (error) => {
-      reject({
-        message: '解析 JSON 文件失败',
-        description: error,
-      })
+    reader.onerror = () => {
+      reject(new Error('解析 JSON 文件失败'))
     }
 
     reader.onload = () => {
@@ -138,17 +135,11 @@ function importJSON(file: Blob | UploadFile<any>) {
           }
         }
         catch (error) {
-          reject({
-            message: '解析 JSON 失败',
-            description: error,
-          })
+          reject(new Error(`解析 JSON 失败: ${error}`))
         }
       }
       else {
-        reject({
-          message: '读取数据失败',
-          description: '读取数据失败',
-        })
+        reject(new Error('读取数据失败'))
       }
     }
   })

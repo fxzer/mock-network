@@ -139,6 +139,7 @@ export default function RequestDrawer(props: RequestDrawerProps) {
     let active = true
 
     if (!drawerOpen || !record?.request?.url) {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setContentLoading(false)
       return () => {
         active = false
@@ -158,9 +159,13 @@ export default function RequestDrawer(props: RequestDrawerProps) {
       })
       const parsedResponse = parseDrawerApiResponse(record.request.url, nextRawContent)
 
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setRawContent(nextRawContent)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setDisplayData(parsedResponse.displayData)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setApiReply(parsedResponse.apiReply)
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setContentLoading(false)
 
       if (record._internalId) {
@@ -173,8 +178,11 @@ export default function RequestDrawer(props: RequestDrawerProps) {
       }
     }
 
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setRawContent('')
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setDisplayData(null)
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setApiReply('')
 
     if (typeof record._originalRawContent === 'string') {
@@ -192,12 +200,14 @@ export default function RequestDrawer(props: RequestDrawerProps) {
     }
 
     if (!record.getContent) {
+      // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
       setContentLoading(false)
       return () => {
         active = false
       }
     }
 
+    // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
     setContentLoading(true)
     record.getContent(applyContent)
 

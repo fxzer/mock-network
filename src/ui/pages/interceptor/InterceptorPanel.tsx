@@ -26,7 +26,7 @@ import {
   Switch,
 } from 'antd'
 import * as React from 'react'
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import FormatApiMsg from '../../components/FormatApiMsg'
 import LazyMonacoEditor from '../../components/LazyMonacoEditor'
 import {
@@ -168,43 +168,42 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
   })
 
   // 打开内层编辑弹窗
-  const openInnerEditModal = (
-    groupIndex: number,
-    interfaceIndex: number,
-    responseText: string,
-  ) => {
-    const parsed = parseSysxcpApiResponse(responseText)
-    if (parsed) {
-      setInnerEditModal({
-        visible: true,
+  const openInnerEditModal = useCallback(
+    (groupIndex: number, interfaceIndex: number, responseText: string) => {
+      const parsed = parseSysxcpApiResponse(responseText)
+      if (parsed) {
+        // eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+        setInnerEditModal({
+          visible: true,
+          groupIndex,
+          interfaceIndex,
+          apiKey: parsed.key,
+          innerValue: JSON.stringify(parsed.value, null, 2),
+          outer: parsed.outer,
+        })
+      }
+    },
+    [],
+  )
+
+  const openRuleEditModal = useCallback(
+    (groupIndex: number, interfaceIndex: number, rule: DefaultInterfaceObject) => {
+      modifyDataModalRef.current.openModal({
         groupIndex,
         interfaceIndex,
-        apiKey: parsed.key,
-        innerValue: JSON.stringify(parsed.value, null, 2),
-        outer: parsed.outer,
+        activeTab: 'Response',
+        request: rule.request,
+        replacementMethod: rule.replacementMethod,
+        replacementUrl: rule.replacementUrl,
+        replacementStatusCode: rule.replacementStatusCode,
+        headersText: rule.headers,
+        requestPayloadText: rule.requestPayloadText,
+        responseLanguage: rule.language,
+        responseText: rule.responseText,
       })
-    }
-  }
-
-  const openRuleEditModal = (
-    groupIndex: number,
-    interfaceIndex: number,
-    rule: DefaultInterfaceObject,
-  ) => {
-    modifyDataModalRef.current.openModal({
-      groupIndex,
-      interfaceIndex,
-      activeTab: 'Response',
-      request: rule.request,
-      replacementMethod: rule.replacementMethod,
-      replacementUrl: rule.replacementUrl,
-      replacementStatusCode: rule.replacementStatusCode,
-      headersText: rule.headers,
-      requestPayloadText: rule.requestPayloadText,
-      responseLanguage: rule.language,
-      responseText: rule.responseText,
-    })
-  }
+    },
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   // 保存内层编辑
   const saveInnerEdit = () => {
@@ -393,6 +392,7 @@ const InterceptorPanel: React.FC<InterceptorPanelProps> = ({
         const groupOpen = !!interfaceList.find((v: any) => v.open)
         const fold = collapseActiveKeys.length < 1
         return (
+          // eslint-disable-next-line react/no-array-index-key
           <div key={index}>
             <div className={`ajax-tools-iframe-body-header ${headerClass}`}>
               <Button

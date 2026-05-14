@@ -1,49 +1,19 @@
+import { SaveOutlined } from '@ant-design/icons'
 import { ConfigProvider, theme } from 'antd'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { OpenNewWindowIcon } from '../../components/Icons'
 import LazyMonacoEditor from '../../components/LazyMonacoEditor'
 import { DECLARATIVE_NET_REQUEST_EXAMPLES } from '../../constants'
+import { debounce } from '../../utils'
 import { popupWindow } from '../interceptor/PictureInPicture'
+import Countdown from './Countdown'
 
-function debounce<T extends (...args: any[]) => void>(
-  func: T,
-  delay: number,
-): T {
-  let timeoutId: ReturnType<typeof setTimeout>
-
-  return function (this: ThisParameterType<T>, ...args: Parameters<T>): void {
-    clearTimeout(timeoutId)
-
-    timeoutId = setTimeout(() => {
-      func.apply(this, args)
-    }, delay)
-  } as T
-}
-function Countdown(props: { seconds: number }) {
-  let intervalTimer: any = null
-  const [timeRemaining, setTimeRemaining] = useState(props.seconds)
-
-  useEffect(() => {
-    if (timeRemaining > 0) {
-      intervalTimer = setInterval(() => {
-        setTimeRemaining((prevTime: number) => prevTime - 1)
-      }, 1000)
-
-      return () => {
-        clearInterval(intervalTimer)
-      }
-    }
-  }, [timeRemaining])
-
-  return <>{timeRemaining}</>
-}
-
-export default () => {
+export default function RulesApp() {
   const delayDoUpdateRulesTimer = useRef<any>({})
   const monacoEditorRef = useRef<any>({})
   const [text, setText] = useState('[]')
-  const [saveTextTips, setSaveTextTips] = useState<ReactElement>(<></>)
+  const [saveTextTips, setSaveTextTips] = useState<React.ReactNode>(<></>)
   useEffect(() => {
     chrome.declarativeNetRequest
     && chrome.declarativeNetRequest.getDynamicRules((rulesList) => {
@@ -96,6 +66,7 @@ export default () => {
     }
     setSaveTextTips(<span style={{ color: '#999' }}>内容已变更</span>)
     debounceUpdateRules(v)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const onSave = useCallback(() => {

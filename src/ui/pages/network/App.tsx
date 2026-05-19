@@ -45,6 +45,8 @@ const RequestDrawer = React.lazy(() => import('./RequestDrawer'))
 
 const MAX_NETWORK_ROWS = 2000
 const TABLE_MIN_SCROLL_Y = 240
+const TABLE_HEADER_FALLBACK_HEIGHT = 28
+const TABLE_BOTTOM_SAFE_GAP = 16
 const REQUEST_FLUSH_DELAY = 16
 const BRIDGE_INIT_RETRY_DELAY = 120
 const MAX_BRIDGE_INIT_RETRIES = 10
@@ -566,6 +568,7 @@ export default function App() {
   const theme = useTheme()
   const panelRef = useRef<HTMLDivElement | null>(null)
   const toolbarRef = useRef<HTMLDivElement | null>(null)
+  const tableContainerRef = useRef<HTMLDivElement | null>(null)
   const pendingRequestsRef = useRef<any[]>([])
   const deferredTimeoutsRef = useRef<number[]>([])
   const flushTimerRef = useRef<number | null>(null)
@@ -649,10 +652,21 @@ export default function App() {
         || document.body.clientHeight
         || 0
     const toolbarHeight = toolbarRef.current?.getBoundingClientRect().height || 0
-    const nextScrollY = Math.max(
-      Math.floor(panelHeight - toolbarHeight - 2),
-      TABLE_MIN_SCROLL_Y,
+    const tableHeaderElement = tableContainerRef.current?.querySelector(
+      '.ant-table-thead',
     )
+    const tableHeaderHeight
+      = tableHeaderElement?.getBoundingClientRect().height
+        || TABLE_HEADER_FALLBACK_HEIGHT
+    const measuredScrollY = Math.floor(
+      panelHeight
+      - toolbarHeight
+      - tableHeaderHeight
+      - TABLE_BOTTOM_SAFE_GAP,
+    )
+    const nextScrollY = measuredScrollY > 0
+      ? measuredScrollY
+      : TABLE_MIN_SCROLL_Y
 
     setTableScrollY(prev => (prev === nextScrollY ? prev : nextScrollY))
   }, [])
@@ -661,6 +675,16 @@ export default function App() {
     const syncViewport = () => {
       updateTableViewport()
       scheduleDeferredTask(updateTableViewport)
+    }
+
+    const syncViewportAndRepaint = () => {
+      syncViewport()
+      const root = document.documentElement
+      void root.offsetHeight
+      root.style.transform = 'translateZ(0)'
+      requestAnimationFrame(() => {
+        root.style.transform = ''
+      })
     }
 
     syncViewport()
@@ -676,8 +700,8 @@ export default function App() {
     }
 
     window.addEventListener('resize', syncViewport)
-    window.addEventListener('m-network-panel-shown', syncViewport)
-    document.addEventListener('visibilitychange', syncViewport)
+    window.addEventListener('m-network-panel-shown', syncViewportAndRepaint)
+    document.addEventListener('visibilitychange', syncViewportAndRepaint)
 
     const timer = window.setTimeout(syncViewport, 0)
 
@@ -685,8 +709,8 @@ export default function App() {
       window.clearTimeout(timer)
       resizeObserver.disconnect()
       window.removeEventListener('resize', syncViewport)
-      window.removeEventListener('m-network-panel-shown', syncViewport)
-      document.removeEventListener('visibilitychange', syncViewport)
+      window.removeEventListener('m-network-panel-shown', syncViewportAndRepaint)
+      document.removeEventListener('visibilitychange', syncViewportAndRepaint)
     }
   }, [scheduleDeferredTask, updateTableViewport])
 
@@ -1360,7 +1384,7 @@ export default function App() {
           />
         </div>
 
-        <div className="network-panel__table">
+        <div ref={tableContainerRef} className="network-panel__table">
           <Table
             size="small"
             bordered

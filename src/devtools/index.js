@@ -15,6 +15,7 @@ let isRecording = true
 let panelWindow = null
 let syncScheduled = false
 let syncTimerId = null
+let repaintTimerIds = []
 
 function upsertRequestBuffer(serializedRequest) {
   const existingIndex = requestBuffer.findIndex(
@@ -162,20 +163,62 @@ function dispatchBridgeReady(targetWindow) {
   })
 }
 
-function notifyPanelVisible(window) {
-  if (!window) {
+function forceRepaint(targetWindow) {
+  try {
+    const root = targetWindow?.document?.documentElement
+    if (!root) {
+      return
+    }
+
+    void root.offsetHeight
+    root.style.transform = 'translateZ(0)'
+
+    if (typeof targetWindow.requestAnimationFrame === 'function') {
+      targetWindow.requestAnimationFrame(() => {
+        root.style.transform = ''
+      })
+    }
+    else {
+      root.style.transform = ''
+    }
+  }
+  catch {
+    // panel window may have been destroyed
+  }
+}
+
+function notifyPanelVisible(targetWindow) {
+  if (!targetWindow) {
     return
   }
 
-  window.dispatchEvent(new Event('m-network-panel-shown'))
-  window.dispatchEvent(new Event('resize'))
+  targetWindow.dispatchEvent(new Event('m-network-panel-shown'))
+  targetWindow.dispatchEvent(new Event('resize'))
+  forceRepaint(targetWindow)
 
-  if (typeof window.requestAnimationFrame === 'function') {
-    window.requestAnimationFrame(() => {
-      window.dispatchEvent(new Event('m-network-panel-shown'))
-      window.dispatchEvent(new Event('resize'))
+  if (typeof targetWindow.requestAnimationFrame === 'function') {
+    targetWindow.requestAnimationFrame(() => {
+      targetWindow.dispatchEvent(new Event('m-network-panel-shown'))
+      targetWindow.dispatchEvent(new Event('resize'))
+      forceRepaint(targetWindow)
     })
   }
+
+  repaintTimerIds.push(window.setTimeout(() => {
+    if (panelWindow !== targetWindow) {
+      return
+    }
+
+    forceRepaint(targetWindow)
+  }, 100))
+
+  repaintTimerIds.push(window.setTimeout(() => {
+    if (panelWindow !== targetWindow) {
+      return
+    }
+
+    forceRepaint(targetWindow)
+  }, 300))
 }
 
 function attachBridge(targetWindow) {
@@ -291,6 +334,9 @@ chrome.devtools.panels.create(
         window.clearTimeout(syncTimerId)
         syncTimerId = null
       }
+
+      repaintTimerIds.forEach(id => window.clearTimeout(id))
+      repaintTimerIds = []
 
       syncScheduled = false
       pendingSyncRequests.length = 0
